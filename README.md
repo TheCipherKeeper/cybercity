@@ -12,9 +12,9 @@ red / blue team.
 нет документации. Только индекс: что строим, зачем, где какой слой
 лежит, в каком порядке читать.
 
-> Исходная точка: [`master.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/master.md)
+> Исходная точка: [`docs/VISION.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/VISION.md)
 > — философия и дорожная карта. Этот README — короткая выжимка;
-> полная версия — в engine-репо.
+> канон композиции — в [`COMPOSITION.md`](COMPOSITION.md).
 
 ## Идея
 
@@ -28,6 +28,9 @@ red / blue team.
 
 ## Композиция
 
+Каноническая карта слоёв, контрактов и доверительной границы —
+[`COMPOSITION.md`](COMPOSITION.md). Ниже — короткая выжимка.
+
 ```
                     ┌──────────────────────────┐
                     │      cybercity (cover)   │ ← вы здесь
@@ -36,8 +39,8 @@ red / blue team.
         ┌────────────┬────────────┼────────────┬────────────┐
         ▼            ▼            ▼            ▼            ▼
    cybercity-    cybercity-    cybercity-   cybercity-   cybercity-
-     data         engine          ui        agents     blueprints
-  (network.yml)  (Go runtime)   (2D map)  (log/SIEM)  (Proxmox VMs)
+     data         engine          ui       collector     manage
+ (model+сцен.) (Go runtime)  (2D-карта) (out-of-band) (control plane)
 ```
 
 Каждый репозиторий — один слайс системы. Одна и та же сетевая модель,
@@ -46,22 +49,23 @@ red / blue team.
 
 | | Репозиторий | Что делает |
 |---|---|---|
-| 🎯 | **[cybercity](https://github.com/TheCipherKeeper/cybercity)** | Обложка и индекс проекта (этот репо) |
-| ⚙️ | [cybercity-engine](https://github.com/TheCipherKeeper/cybercity-engine) | Go-каркас: событийное ядро, валидатор сети, рендер K8s-манифестов |
-| 🗺️ | [cybercity-data](https://github.com/TheCipherKeeper/cybercity-data) | 30 организаций, 95 сервисов, decoy-хосты в `network.yml` |
-| 🖥️ | [cybercity-ui](https://github.com/TheCipherKeeper/cybercity-ui) | 2D-карта города, таймлайн событий, дашборды red/blue |
-| 📡 | [cybercity-agents](https://github.com/TheCipherKeeper/cybercity-agents) | Сборщики логов / SIEM-агенты внутри сегментов |
-| 🏗️ | [cybercity-blueprints](https://github.com/TheCipherKeeper/cybercity-blueprints) | Provisioning Proxmox-VM узлов (Ansible / Terraform) |
+| 🎯 | **[cybercity](https://github.com/TheCipherKeeper/cybercity)** | Обложка и индекс проекта (этот репо); канон композиции — [`COMPOSITION.md`](COMPOSITION.md) |
+| 🗺️ | [cybercity-data](https://github.com/TheCipherKeeper/cybercity-data) | Декларативная модель города (source of truth) + авторинг сценариев (Python) |
+| ⚙️ | [cybercity-engine](https://github.com/TheCipherKeeper/cybercity-engine) | Go runtime: событийное ядро, причинный граф, replay, эмуляция трафика, scoring |
+| 🏗️ | [cybercity-manage](https://github.com/TheCipherKeeper/cybercity-manage) | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты (Python поверх Proxmox/Terraform) |
+| 📡 | [cybercity-collector](https://github.com/TheCipherKeeper/cybercity-collector) | Внешний out-of-band per-host коллектор (Rust): подписанные события в engine по Kafka |
+| 🖥️ | [cybercity-ui](https://github.com/TheCipherKeeper/cybercity-ui) | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты |
 
 Полная карта и общий стиль: [`TheCipherKeeper`](https://github.com/TheCipherKeeper/TheCipherKeeper) (профиль) и [thecipherkeeper.github.io](https://thecipherkeeper.github.io) (CV, развёрнутые описания).
 
 ## Как читать
 
-1. **Философия** — [`master.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/master.md): что строим, зачем, в каком порядке.
-2. **Каноническая модель города** — [`cybercity-data/network.yml`](https://github.com/TheCipherKeeper/cybercity-data/blob/main/network.yml) и его человекочитаемая проекция [`network.md`](https://github.com/TheCipherKeeper/cybercity-data/blob/main/network.md).
-3. **Runtime** — [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine): Go-валидатор, событийное ядро, рендер K8s-манифестов.
-4. **Визуализация** — [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui): 2D-карта, таймлайн, дашборды.
-5. **Инфраструктура** — [`cybercity-blueprints`](https://github.com/TheCipherKeeper/cybercity-blueprints) + [`cybercity-agents`](https://github.com/TheCipherKeeper/cybercity-agents): узлы и агенты внутри сегментов.
+1. **Композиция** — [`COMPOSITION.md`](COMPOSITION.md): репозитории, контракты, доверительная граница, история переименований.
+2. **Философия** — [`docs/VISION.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/VISION.md): что строим, зачем, в каком порядке.
+3. **Каноническая модель города** — `organizations/*/config.yml` в [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) и его человекочитаемая проекция `build/network.md`.
+4. **Runtime** — [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine): событийное ядро, причинный граф, replay, эмуляция трафика.
+5. **Управление и сбор** — [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) (контрольная плоскость) + [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) (out-of-band коллектор).
+6. **Визуализация** — [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui): 2D-карта, таймлайн, дашборды.
 
 ## Принципы
 
@@ -82,8 +86,8 @@ red / blue team.
 
 ## Статус
 
-В активной разработке. v1.0 = 30 организаций / 95 сервисов / 3 сценария учений.
-Дорожная карта — в [`master.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/master.md).
+В активной разработке. Модель города: 46 организаций / 263 сервиса / 464 линка; сценарии учений авторятся в `cybercity-data` (формат в разработке).
+Дорожная карта — в [`docs/VISION.md`](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/VISION.md).
 
 ## Лицензия
 
