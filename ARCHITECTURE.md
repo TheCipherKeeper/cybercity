@@ -32,8 +32,8 @@
 │         │     ┌─────────────┼─────────────┐    │ control: manage     │
 │         │     ▼             ▼             ▼                            │
 │  ┌──────▼─────┐   ┌────────▼────────┐   ┌──────────────┐            │
-│  │ PostgreSQL │   │  Real services  │   │ Simulated    │            │
-│  │  (state)   │   │  (VM / pod)     │   │ services     │            │
+│  │ PostgreSQL │   │  Real services  │   │ lite stubs   │            │
+│  │  (state)   │   │  (VM / pod)     │   │ (cc-lite)    │            │
 │  └────────────┘   └─────────────────┘   └──────────────┘            │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -76,15 +76,19 @@
 
 ## Hybrid execution
 
-| Режим | Кто отвечает на события | Когда используется |
-|-------|-------------------------|--------------------|
-| **simulated** | Эмулятор движка | Лёгкие сервисы, массовые decoys. |
-| **real** | Внешний наблюдатель на VM/pod | High-value target для hands-on. |
-| **decoy** | Эмулятор с fake fingerprint | Honeypots, threat intelligence. |
+| `runtime_kind` | Что это | Кто отвечает на события | Когда используется |
+|-------|---|---|----|
+| **vm** | полная VM, real OS/software | Out-of-band наблюдатель (`cybercity-collector`) | High-value target, Windows/OT, persistence |
+| **container** | контейнер, real software (gVisor/Kata) | Out-of-band наблюдатель | real-сервис на shared-ядре, плотнее VM |
+| **lite** | лёгкий stub-контейнер: реальный сокет + подделанный баннер | Out-of-band наблюдатель | Массовый фон города (замена «simulated») |
 
-`runtime_mode` — deployment-time concern, не часть канонической city data.
-Реальные сервисы обнаруживаются по heartbeat-событиям. Обоснование —
-[`cybercity-engine`/docs/adr/0003-hybrid-execution.md](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/adr/0003-hybrid-execution.md).
+`runtime_kind` — deployment-time concern, не часть канонической city data
+(назначается в `cybercity-manage` service-mapping manifest). По умолчанию —
+`lite`. `honeypot` — отдельный флаг назначения-наживки (бывший `decoy`),
+ортогонален `runtime_kind` (honeypot может быть `lite` или `vm`). Все runtime-цели
+наблюдаются коллектором единообразно; движок — регистратор, не симулятор
+(класса «engine-synthesized service events» нет). Обоснование —
+[`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
 
 ## Слои развёртывания
 
@@ -92,7 +96,7 @@
 |------|------------|----------------------|
 | **Management** | Админский доступ, CI/CD, мониторинг; живут manage + коллектор + Kafka | Proxmox host, Terraform, Ansible |
 | **Control** | Движок, БД, messaging, GitOps | K8s, Redpanda, PostgreSQL, ArgoCD |
-| **City / Data** | Real VMs, simulated pods, player workstations | VMs, Multus, Cilium, VyOS |
+| **City / Data** | Real VMs, lite stub-контейнеры, player workstations | VMs, Multus, Cilium, VyOS |
 
 ## Observability
 
@@ -120,7 +124,7 @@
 | Сервисы | 300 | 1,000+ |
 | Событий/сек | 100 | 10,000+ |
 | Игроки | 10 | 100+ |
-| Real VMs | 6–10 | 50–100 |
+| Real VMs/контейнеры | 6–10 | 50–100 |
 | Latency | <1s на tick | <100ms на событие |
 
 ## Дорожная карта к первой публичной демонстрации

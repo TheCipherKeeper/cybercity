@@ -67,6 +67,10 @@
   для scoring.
 - `cybercity-collector` подписывает события (Ed25519); Kafka — mTLS + ACL
   на продюсеров; гости до брокера не достукиваются структурно.
+- Все runtime-цели (`vm` / `container` / `lite`) наблюдаются коллектором
+  out-of-band единообразно; класса «engine-synthesized service events» нет —
+  движок регистратор, не симулятор (см.
+  [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md)).
 
 ## Кто чем владеет (границы ответственности)
 
@@ -79,6 +83,10 @@
 - **Наблюдение снаружи** → `collector`. **Действие над гостем** (reset/
   изоляция) — через `manage`/фабрику, **не** через in-guest агент.
   In-guest enrichment — опционально, best-effort.
+- **`runtime_kind`** (`vm`/`container`/`lite`, deployment-time) → `manage`
+  (service-mapping manifest). **`honeypot`** (назначение-наживка) → `data`
+  (свойство сервиса). Движок — **регистратор**, не симулятор. См.
+  [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
 
 ## История переименований
 
