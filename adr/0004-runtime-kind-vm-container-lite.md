@@ -27,7 +27,7 @@ Accepted
   adversarial-изоляции. Reset — restart pod.
 - `lite` — **максимально лёгкий stub-контейнер**: реальный сокет + поддельный
   баннер/поведение, параметризуется дескриптором сервиса (`kind`, `ports`,
-  `software`, `cve_id`). Реализуется образом `cc-lite` (репо `cybercity-clite`,
+  `software`, `cve_id`). Реализуется образом `clite` (репо `cybercity-clite`,
   см. ADR-0001). Дешёвый runnable-фон города. Reset — restart pod.
 
 `runtime_kind` — **deployment-time concern, не часть канонической city data.**
@@ -68,7 +68,7 @@ In-guest enrichment остаётся best-effort — но это про данн
 ### Negative
 
 - Логика фейковых сервисов **живёт в образе, не в движке**: правила «как lite
-  отвечает» реализованы в образе `cc-lite` (репо `cybercity-clite`), а не в
+  отвечает» реализованы в образе `clite` (репо `cybercity-clite`), а не в
   движке. Пока образ не построен, `lite`-цель — заявленный контракт, не
   реализованная runtime-цель.
 - N запущенных штук вместо ~2: `lite`-контейнеры потребляют Multus-IP, pod'ы,
@@ -101,7 +101,7 @@ In-guest enrichment остаётся best-effort — но это про данн
 ## Related
 
 - [`0001-repo-composition.md`](0001-repo-composition.md) — репо `cybercity-clite`,
-  где строится образ `cc-lite`.
+  где строится образ `clite`.
 - [`0002-trust-boundary.md`](0002-trust-boundary.md) — доверительная граница;
   упрощается (engine-synth service-событий нет).
 - [`0003-collector-rust-out-of-band.md`](0003-collector-rust-out-of-band.md) —

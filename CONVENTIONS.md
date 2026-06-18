@@ -60,8 +60,8 @@ cybercity-<repo>/
 ```
 
 Хаб `cybercity/` держит только системные документы: `README.md`,
-`COMPOSITION.md`, `VISION.md`, `ARCHITECTURE.md`, `CONVENTIONS.md`, `adr/`,
-`LICENSE`, `LICENSE-DOCS`. Кода нет.
+`COMPOSITION.md`, `VISION.md`, `ARCHITECTURE.md`, `DATA_FLOW.md`,
+`CONVENTIONS.md`, `adr/`, `LICENSE`, `LICENSE-DOCS`. Кода нет.
 
 ## AGENTS.md — агент-слой
 

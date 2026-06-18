@@ -3,7 +3,9 @@
 Системный взгляд: как слои соединены, где что живёт, какие потоки между ними.
 Зачем проект существует и принципы — в [`VISION.md`](VISION.md); состав
 репозиториев, контракты, доверительная граница и ownership — в
-[`COMPOSITION.md`](COMPOSITION.md). Здесь — только «как соединено».
+[`COMPOSITION.md`](COMPOSITION.md); runtime-динамика (жизненный цикл события и
+сценария, end-to-end потоки) — в [`DATA_FLOW.md`](DATA_FLOW.md). Здесь — только
+«как соединено» (статика + сетевая топология).
 
 ## Системный контекст
 
@@ -20,7 +22,7 @@ flowchart TB
         Bus{{"Redpanda / Kafka<br/>(event bus)"}}
         Collector["cybercity-collector (Rust)<br/>out-of-band · Ed25519-подпись"]
         Manage["cybercity-manage<br/>control plane<br/>provisioning · reset · изоляция"]
-        Runtime["Runtime-цели<br/>vm / container / lite (cc-lite — репо cybercity-clite)"]
+        Runtime["Runtime-цели<br/>vm / container / lite (clite — репо cybercity-clite)"]
     end
 
     Users --> UI
@@ -58,7 +60,7 @@ flowchart TB
 | **cybercity-ui** | Визуализация (карта, таймлайн, дашборды), ввод игрока, real-time обновления по WebSocket от engine + чтение статичной `topology.json` из data. |
 | **cybercity-manage** | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты/мульти-тенантность; размещает коллектор на хостах; координирует engine через control API + Redpanda. |
 | **cybercity-collector** | Внешний out-of-band per-host наблюдатель; подписанные события в engine по Kafka; control-канал от manage. |
-| **cybercity-clite** | Параметризуемый stub-образ `cc-lite` для `runtime_kind: lite`: биндит порты, поддельный баннер/поведение по дескриптору сервиса, heartbeat коллектору. |
+| **cybercity-clite** | Параметризуемый stub-образ `clite` для `runtime_kind: lite`: биндит порты, поддельный баннер/поведение по дескриптору сервиса, heartbeat коллектору. |
 | **Redpanda / Kafka** | Event bus: подписанные события collector → engine (авторитетный поток для scoring) + control-канал manage → collector/engine. |
 | **PostgreSQL** | Снапшоты `WorldState` и audit log событийного графа. |
 | **MinIO / S3** | Артефакты `engine.zip` и replay-дампы. |
@@ -102,6 +104,67 @@ flowchart TB
 | **Control** | Движок, БД, messaging, GitOps | K8s, Redpanda, PostgreSQL, ArgoCD |
 | **City / Data** | Real VMs, lite stub-контейнеры, player workstations | VMs, Multus, Cilium, VyOS |
 
+## Сетевая топология и сегментация
+
+Физическая реализация доверительной границы (ADR-0002). Два сегмента,
+жёстко разделённые; **из range нет маршрута в mgmt-плоскость** (брокер,
+`manage`, control-канал коллектора). Это и есть механизм «атакующий не
+может подделать поток для scoring».
+
+```mermaid
+flowchart LR
+    subgraph MGMT["Management-сегмент (trusted)"]
+        direction TB
+        Prox["Proxmox хосты"]
+        K8sC["K8s control plane<br/>engine · PostgreSQL · Redpanda · ArgoCD"]
+        Manage["cybercity-manage"]
+        Coll["cybercity-collector<br/>(per-host daemon)"]
+        Broker["Redpanda broker"]
+    end
+    subgraph RANGE["Range-сегмент (best-effort, ненадёжный)"]
+        direction TB
+        VM["vm — гости"]
+        CTR["container — поды"]
+        LITE["clite — lite-поды"]
+        PW["player workstations"]
+    end
+
+    Coll -. "out-of-band read-only<br/>(hypervisor/node: fs/net/mem/proc,<br/>scrape сокетов/баннеров)" .-> RANGE
+    Coll -->|"подписанные события (Ed25519)"| Broker
+    Broker -->|"авторитетный поток для scoring"| K8sC
+    Manage -->|"provisioning · reset · изоляция<br/>(ZFS snapshot/clone · pod restart)"| Prox
+    Manage -->|"control API / control-topic"| K8sC
+    Manage -->|"control: «наблюдай X»"| Coll
+
+    PW -.->|"attack surface<br/>(только declared exposure)"| RANGE
+
+    RANGE --x|"нет маршрута в mgmt"| MGMT
+```
+
+- **Management-сегмент (trusted):** Proxmox-хосты, K8s control plane (`engine`,
+  `PostgreSQL`, `Redpanda`, ArgoCD), `cybercity-manage`, `cybercity-collector`
+  (по демону на хост), брокер. Здесь считается scoring.
+- **Range-сегмент (best-effort):** гости (`vm`), поды (`container`), stub-поды
+  `clite` (`lite`), рабочие станции игроков. Ненадёжная плоскость; in-guest
+  телеметрия — best-effort, **никогда** не источник для scoring.
+- **Multus** даёт каждому сервису реальный per-service IP в range — поэтому
+  `nmap` видит настоящие сокеты по всему городу (включая `lite`).
+- **Cilium** реализует сетевые политики = рёбра топологического графа: публичные
+  сервисы достижимы только через declared exposure; OT/ICS-сегменты изолированы
+  от management и публичных сетей.
+- **Направление наблюдения — mgmt → range, read-only:** коллектор наблюдает
+  цели снаружи (зонды на гипервизоре/узле + scrape сокетов/баннеров) и
+  подписывает события; range ничего не инициирует в mgmt. «Heartbeat» `clite`
+  наблюдается коллектором как часть out-of-band scrape, а не пушем в mgmt.
+- **Reset/изоляция:** `manage` драйвит гипервизор из mgmt (ZFS snapshot/clone
+  для `vm`, restart pod для `container`/`lite`); гость себя сам не сбрасывает.
+
+> Топология — целевая; текущая степень развёртывания — в
+> [`COMPOSITION.md`](COMPOSITION.md) (§ «Статус реализации»). Доверительная
+> граница как концепция (trusted vs best-effort, кто считает scoring) — там же,
+> § «Доверительная граница»; обоснование —
+> [`adr/0002-trust-boundary.md`](adr/0002-trust-boundary.md).
+
 ## Observability
 
 - **Метрики:** tick duration, queue depth, event throughput, health сервисов.
@@ -111,11 +174,9 @@ flowchart TB
 
 ## Модель безопасности
 
-Сетевой и экспозиционный аспект:
+Доступ и секреты (сетевая сегментация, declared exposure и OT-изоляция — в
+§ «Сетевая топология и сегментация»):
 
-- Сетевая сегментация явно задана в топологическом графе.
-- Публичные сервисы достижимы только через declared exposure.
-- OT-сегменты изолированы от management и публичных сетей.
 - Публичный UI read-only; действия игрока требуют аутентифицированной сессии.
 - Секреты в Vault или cloud KMS, никогда в репозиториях.
 
@@ -141,7 +202,7 @@ flowchart TB
 4. **Scenario runner** — первый скриптованный сценарий (авторинг в data).
 5. **UI** — интерактивный граф, event log, панель команд.
 6. **Home lab deployment** — Proxmox + K8s через manage.
-7. **cc-lite-образ** — параметризуемая заглушка `lite`-целей (фон города; без него `lite` не runnable).
+7. **clite-образ** — параметризуемая заглушка `lite`-целей (фон города; без него `lite` не runnable).
 8. **Public read-only demo** — Cloudflare tunnel.
 
 Текущий статус реализации по репозиториям — в [`COMPOSITION.md`](COMPOSITION.md)
@@ -150,6 +211,7 @@ flowchart TB
 ## Связанные документы
 
 - [`VISION.md`](VISION.md) — зачем проект существует, принципы, аудитории, non-goals.
+- [`DATA_FLOW.md`](DATA_FLOW.md) — runtime-динамика: жизненный цикл события и сценария, end-to-end потоки, replay/scoring.
 - [`COMPOSITION.md`](COMPOSITION.md) — состав, контракты, доверительная граница, ownership, статус.
 - [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции и иерархия документов.
 - [`adr/`](adr/) — сквозные архитектурные решения.

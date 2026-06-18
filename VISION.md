@@ -123,6 +123,8 @@ stub-контейнер с реальным сокетом + поддельны�
 - [`COMPOSITION.md`](COMPOSITION.md) — состав, стек каждого слоя, контракты,
   доверительная граница, ownership.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — системная архитектура, два графа,
-  hybrid execution, слои развёртывания, roadmap.
+  hybrid execution, сетевая топология, слои развёртывания, roadmap.
+- [`DATA_FLOW.md`](DATA_FLOW.md) — runtime-динамика: жизненный цикл события и
+  сценария, end-to-end потоки, replay/scoring.
 - [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции и правило лицензий.
 - [`adr/`](adr/) — сквозные архитектурные решения.

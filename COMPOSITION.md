@@ -20,7 +20,7 @@
 | Витрина | [`cybercity`](https://github.com/TheCipherKeeper/cybercity) | — | обложка/индекс проекта; системные документы (без кода) |
 | Данные | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев |
 | Runtime | [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine) | Go | событийное ядро: топологический + причинный граф, tick-loop, replay, эмуляция трафика, scoring |
-| Lite-цель | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | параметризуемый stub-образ `cc-lite` для `runtime_kind: lite` (реальный сокет + поддельный баннер по дескриптору сервиса); живёт в range-сегменте, наблюдается коллектором out-of-band |
+| Lite-цель | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | параметризуемый stub-образ `clite` для `runtime_kind: lite` (реальный сокет + поддельный баннер по дескриптору сервиса); живёт в range-сегменте, наблюдается коллектором out-of-band |
 | Управление | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Python | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты, мульти-тенантность; оркестрирует Proxmox API + Terraform/Pulumi; размещает доверенный коллектор |
 | Коллектор | [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) | Rust | внешний out-of-band per-host коллектор: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range-сегмента |
 | Визуал | [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui) | TS (+возм. Rust) | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты |
@@ -86,7 +86,7 @@
 - **`runtime_kind`** (`vm`/`container`/`lite`, deployment-time) → `manage`
   (service-mapping manifest). Движок — **регистратор**, не симулятор. См.
   [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
-- **Образ `lite`-цели** (`cc-lite`) → `cybercity-clite` (Rust): параметризуется
+- **Образ `lite`-цели** (`clite`) → `cybercity-clite` (Rust): параметризуется
   дескриптором сервиса, деплоится в range-сегмент, наблюдается `collector`
   out-of-band. См. [`adr/0001-repo-composition.md`](adr/0001-repo-composition.md)
   и [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
@@ -101,7 +101,7 @@
   IaC (Ansible/Terraform/Pulumi) под собой, а не переписывающая provisioning
   заново.
 - **`cybercity-clite`** (не `cybercity-lite`), чтобы не читалось как «облегчённая
-  cybercity»; образ/бинарь — `cc-lite` (`cc` = cyber city). См. ADR-0001/0004.
+  cybercity»; образ/бинарь — `clite` (`cc` = cyber city). См. ADR-0001/0004.
 - Авторинг сценариев живёт **в `cybercity-data`**, отдельного репо сценариев нет.
 - Эмуляция трафика живёт **в `cybercity-engine`**, отдельного репо симулятора нет.
 
@@ -118,9 +118,9 @@
   заход (ADR-0003).
 - `cybercity-manage` — стартовая точка: контрольная плоскость поверх
   Proxmox API + Terraform/Pulumi (provisioning, reset, изоляция, квоты).
-- `cybercity-clite` — стартовая точка: образ `cc-lite` — параметризуемая
+- `cybercity-clite` — стартовая точка: образ `clite` — параметризуемая
   заглушка (биндит порты, поддельный баннер по дескриптору, heartbeat
-  коллектору). Контракт дескриптор → поведение и `cc-lite` ↔ collector — TBD.
+  коллектору). Контракт дескриптор → поведение и `clite` ↔ collector — TBD.
 - `cybercity-ui` — каркас: карта, таймлайн, дашборды.
 
 Дорожная карта к первой публичной демонстрации — в
@@ -129,6 +129,7 @@
 ## Связанные документы
 
 - [`VISION.md`](VISION.md) — зачем проект существует, принципы, аудитории.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — системная архитектура, два графа, hybrid execution, слои.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — системная архитектура, два графа, hybrid execution, сетевая топология, слои.
+- [`DATA_FLOW.md`](DATA_FLOW.md) — runtime-динамика: жизненный цикл события и сценария, end-to-end потоки, replay/scoring.
 - [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции и правило лицензий.
 - [`adr/`](adr/) — сквозные архитектурные решения.
