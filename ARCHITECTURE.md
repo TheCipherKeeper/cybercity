@@ -1,60 +1,65 @@
 # CyberCity — Архитектура
 
-Системный взгляд: как слои связаны, где что живёт, какие контракты между
-ними. Внутреннее устройство каждого репозитория — в его собственном
-`docs/ARCHITECTURE.md`; состав и доверительная граница — в
-[`COMPOSITION.md`](COMPOSITION.md).
+Системный взгляд: как слои соединены, где что живёт, какие потоки между ними.
+Зачем проект существует и принципы — в [`VISION.md`](VISION.md); состав
+репозиториев, контракты, доверительная граница и ownership — в
+[`COMPOSITION.md`](COMPOSITION.md). Здесь — только «как соединено».
 
 ## Системный контекст
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Внешние пользователи                         │
-│   Игроки │ Инструкторы │ Read-only посетители │ Авторы сценариев    │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Платформа CyberCity                          │
-│                                                                      │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐  │
-│  │     UI      │    │   Engine    │    │  cybercity-data         │  │
-│  │  (React/    │◄──►│    (Go)     │◄──►│  (модель + сценарии,    │  │
-│  │  WebSocket) │    │             │    │   Python)               │  │
-│  └──────┬──────┘    └──────┬──────┘    └─────────────────────────┘  │
-│         │                   │                                        │
-│         │                   ▼                                        │
-│         │          ┌─────────────────┐                               │
-│         │          │ Redpanda/Kafka  │◄──── cybercity-collector      │
-│         │          │  (event bus)   │      (Rust, out-of-band,      │
-│         │          └─────────────────┘       подписанные события)    │
-│         │                   │                  ▲                    │
-│         │     ┌─────────────┼─────────────┐    │ control: manage     │
-│         │     ▼             ▼             ▼                            │
-│  ┌──────▼─────┐   ┌────────▼────────┐   ┌──────────────┐            │
-│  │ PostgreSQL │   │  Real services  │   │ lite stubs   │            │
-│  │  (state)   │   │  (VM / pod)     │   │ (cc-lite)    │            │
-│  └────────────┘   └─────────────────┘   └──────────────┘            │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Инфраструктурный слой: cybercity-manage (контрольная плоскость)     │
-│  поверх Proxmox + Kubernetes + Cilium + Multus                      │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Users["Внешние пользователи<br/>Игроки · Инструкторы · Read-only · Авторы сценариев"]
+
+    subgraph Platform["Платформа CyberCity"]
+        direction TB
+        UI["UI<br/>(React / WebSocket)"]
+        Engine["Engine (Go)<br/>владеет state · единственный мутатор"]
+        Data["cybercity-data (Python)<br/>модель + сценарии"]
+        PG[("PostgreSQL<br/>snapshots + audit log<br/>engine — единственный")]
+        Bus{{"Redpanda / Kafka<br/>(event bus)"}}
+        Collector["cybercity-collector (Rust)<br/>out-of-band · Ed25519-подпись"]
+        Manage["cybercity-manage<br/>control plane<br/>provisioning · reset · изоляция"]
+        Runtime["Runtime-цели<br/>vm / container / lite (cc-lite — репо cybercity-clite)"]
+    end
+
+    Users --> UI
+
+    UI <-->|"WebSocket (live-поток)"| Engine
+    UI -.->|"читает topology.json (static)"| Data
+    Data <-->|"engine.zip"| Engine
+
+    Engine -->|"snapshots + audit"| PG
+
+    Runtime <-.->|"out-of-band наблюдение"| Collector
+    Collector -->|"подписанные события"| Bus
+    Bus -->|"авторитетный поток для scoring"| Engine
+
+    Manage -->|"control API (HTTP/gRPC)<br/>старт/сброс сценария · снапшот · reload"| Engine
+    Manage -.->|"infra-events<br/>(control-topic)"| Bus
+    Manage -->|"control: «наблюдай X» · «снапшот» · «обнови политику»"| Collector
+    Manage -->|"provisioning · reset · изоляция"| InfraHosts
+
+    subgraph InfraLayer["Инфраструктурный слой (управляется cybercity-manage)"]
+        InfraHosts["Proxmox + Kubernetes<br/>+ Cilium + Multus"]
+    end
 ```
 
 ## Основные ответственности
 
-| Компонент | Ответственность |
-|-----------|-----------------|
+Функция каждого компонента в системе. Границы владения (кто чем владеет, кто
+ходит в БД, кто мутатор) — в [`COMPOSITION.md`](COMPOSITION.md)
+(§ «Кто чем владеет»).
+
+| Компонент | Функция |
+|-----------|---------|
 | **cybercity-data** | Декларативная модель города (source of truth), валидация, генерация артефактов (`engine.zip`, `topology.json`, …), авторинг сценариев. |
-| **cybercity-engine** | Runtime-состояние, обработка событий, propagation, причинный граф, снапшоты, scoring, исполнение сценариев. **Единственный мутатор состояния.** |
-| **cybercity-ui** | Визуализация (карта, таймлайн, дашборды), ввод игрока, real-time обновления по WebSocket. |
-| **cybercity-manage** | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты/мульти-тенантность; размещает коллектор на хостах. |
+| **cybercity-engine** | Runtime-состояние, обработка событий, propagation, причинный граф, снапшоты, scoring, исполнение сценариев. |
+| **cybercity-ui** | Визуализация (карта, таймлайн, дашборды), ввод игрока, real-time обновления по WebSocket от engine + чтение статичной `topology.json` из data. |
+| **cybercity-manage** | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты/мульти-тенантность; размещает коллектор на хостах; координирует engine через control API + Redpanda. |
 | **cybercity-collector** | Внешний out-of-band per-host наблюдатель; подписанные события в engine по Kafka; control-канал от manage. |
-| **Redpanda / Kafka** | Event bus между engine, ui, коллектором, реальными сервисами. |
+| **cybercity-clite** | Параметризуемый stub-образ `cc-lite` для `runtime_kind: lite`: биндит порты, поддельный баннер/поведение по дескриптору сервиса, heartbeat коллектору. |
+| **Redpanda / Kafka** | Event bus: подписанные события collector → engine (авторитетный поток для scoring) + control-канал manage → collector/engine. |
 | **PostgreSQL** | Снапшоты `WorldState` и audit log событийного графа. |
 | **MinIO / S3** | Артефакты `engine.zip` и replay-дампы. |
 
@@ -80,14 +85,13 @@
 |-------|---|---|----|
 | **vm** | полная VM, real OS/software | Out-of-band наблюдатель (`cybercity-collector`) | High-value target, Windows/OT, persistence |
 | **container** | контейнер, real software (gVisor/Kata) | Out-of-band наблюдатель | real-сервис на shared-ядре, плотнее VM |
-| **lite** | лёгкий stub-контейнер: реальный сокет + подделанный баннер | Out-of-band наблюдатель | Массовый фон города (замена «simulated») |
+| **lite** | лёгкий stub-контейнер: реальный сокет + подделанный баннер | Out-of-band наблюдатель | Массовый фон города (дешёвый runnable-фон) |
 
 `runtime_kind` — deployment-time concern, не часть канонической city data
 (назначается в `cybercity-manage` service-mapping manifest). По умолчанию —
-`lite`. `honeypot` — отдельный флаг назначения-наживки (бывший `decoy`),
-ортогонален `runtime_kind` (honeypot может быть `lite` или `vm`). Все runtime-цели
-наблюдаются коллектором единообразно; движок — регистратор, не симулятор
-(класса «engine-synthesized service events» нет). Обоснование —
+`lite`. Все runtime-цели наблюдаются коллектором единообразно; движок —
+регистратор, не симулятор (класса «engine-synthesized service events» нет).
+Обоснование —
 [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
 
 ## Слои развёртывания
@@ -107,15 +111,17 @@
 
 ## Модель безопасности
 
+Сетевой и экспозиционный аспект:
+
 - Сетевая сегментация явно задана в топологическом графе.
 - Публичные сервисы достижимы только через declared exposure.
 - OT-сегменты изолированы от management и публичных сетей.
-- Наблюдение за гостями — только out-of-band (`cybercity-collector`),
-  подписанные события; in-guest телеметрия — best-effort, не для scoring.
 - Публичный UI read-only; действия игрока требуют аутентифицированной сессии.
 - Секреты в Vault или cloud KMS, никогда в репозиториях.
 
-См. [ADR-0002: доверительная граница](adr/0002-trust-boundary.md).
+Доверительная граница (trusted vs best-effort плоскость, кто считает scoring) —
+в [`COMPOSITION.md`](COMPOSITION.md) (§ «Доверительная граница»); обоснование — в
+[`adr/0002-trust-boundary.md`](adr/0002-trust-boundary.md).
 
 ## Целевые показатели масштабируемости
 
@@ -135,12 +141,16 @@
 4. **Scenario runner** — первый скриптованный сценарий (авторинг в data).
 5. **UI** — интерактивный граф, event log, панель команд.
 6. **Home lab deployment** — Proxmox + K8s через manage.
-7. **Public read-only demo** — Cloudflare tunnel.
+7. **cc-lite-образ** — параметризуемая заглушка `lite`-целей (фон города; без него `lite` не runnable).
+8. **Public read-only demo** — Cloudflare tunnel.
+
+Текущий статус реализации по репозиториям — в [`COMPOSITION.md`](COMPOSITION.md)
+(§ «Статус реализации»).
 
 ## Связанные документы
 
-- [`COMPOSITION.md`](COMPOSITION.md) — состав, контракты, доверительная граница.
-- [`VISION.md`](VISION.md) — философия и принципы.
+- [`VISION.md`](VISION.md) — зачем проект существует, принципы, аудитории, non-goals.
+- [`COMPOSITION.md`](COMPOSITION.md) — состав, контракты, доверительная граница, ownership, статус.
 - [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции и иерархия документов.
 - [`adr/`](adr/) — сквозные архитектурные решения.
 - [`cybercity-engine`/docs/ARCHITECTURE.md](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/ARCHITECTURE.md) — внутреннее устройство движка.

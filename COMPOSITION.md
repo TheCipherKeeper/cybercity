@@ -1,8 +1,8 @@
 # CyberCity — композиция
 
-Канонический источник правды о составе проекта. Все репозитории
-ссылаются сюда; их README держат только короткую сводку + ссылку на
-этот файл.
+Канонический источник правды о составе проекта: репозитории, контракты,
+доверительная граница, ownership, имена, статус реализации. Все репозитории
+ссылаются сюда; их README держат только короткую сводку + ссылку на этот файл.
 
 **CyberCity** — модульный кибер-полигон: цифровой двойник города
 (IT/OT) для учений red/blue. Каждый репозиторий — один слайс системы;
@@ -13,27 +13,14 @@
 > (см. «Статус реализации» внизу); документ фиксирует договорённости,
 > к которым идёт код, а не только то, что уже построено.
 
-## Документация в этом репозитории
-
-Помимо этого файла, хаб держит системные документы:
-
-- [`VISION.md`](VISION.md) — философия, принципы, аудитории, критерии успеха.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — системная архитектура и контекст.
-- [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции, иерархия документов,
-  скелет репозитория, форматы ADR/README, event envelope.
-- [`adr/`](adr/) — сквозные архитектурные решения (почему 6 репо, доверительная
-  граница, Rust-коллектор).
-
-Каждый репозиторий `cybercity-*` держит собственный `AGENTS.md` (governance) и
-`docs/` (как реализовано в нём) и ссылается сюда как к канону.
-
 ## Репозитории
 
 | Слой | Репо | Язык | Назначение |
 |---|---|---|---|
-| Витрина | [`cybercity`](https://github.com/TheCipherKeeper/cybercity) | — | обложка/индекс проекта; канон композиции (этот файл) |
+| Витрина | [`cybercity`](https://github.com/TheCipherKeeper/cybercity) | — | обложка/индекс проекта; системные документы (без кода) |
 | Данные | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев |
 | Runtime | [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine) | Go | событийное ядро: топологический + причинный граф, tick-loop, replay, эмуляция трафика, scoring |
+| Lite-цель | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | параметризуемый stub-образ `cc-lite` для `runtime_kind: lite` (реальный сокет + поддельный баннер по дескриптору сервиса); живёт в range-сегменте, наблюдается коллектором out-of-band |
 | Управление | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Python | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты, мульти-тенантность; оркестрирует Proxmox API + Terraform/Pulumi; размещает доверенный коллектор |
 | Коллектор | [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) | Rust | внешний out-of-band per-host коллектор: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range-сегмента |
 | Визуал | [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui) | TS (+возм. Rust) | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты |
@@ -72,35 +59,51 @@
   движок регистратор, не симулятор (см.
   [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md)).
 
+Обоснование — в [`adr/0002-trust-boundary.md`](adr/0002-trust-boundary.md).
+
 ## Кто чем владеет (границы ответственности)
 
 - **Provisioning / reset / изоляция на уровне инфры** → `manage`
   (гипервизор/фабрика). `engine` только *слышит* об этом как о смене
   состояния.
 - **События / причинность / replay / scoring-логика** → `engine`.
+- **World-state / persistence (PostgreSQL)** → `engine` и только `engine`.
+  `engine` — единственный читатель и писатель PostgreSQL (снапшоты
+  `WorldState` + audit log). **UI и manage в БД не ходят.** UI читает
+  статичную `topology.json` (из `data`) + live-поток `engine` по WebSocket;
+  manage координирует `engine` через control API и Redpanda, но world-state
+  не владеет.
+- **manage ↔ engine** — два канала: control API `manage → engine`
+  (HTTP/gRPC: старт/пауза/сброс сценария, запрос снапшота, reload
+  топологии) + Redpanda control-topic `manage → engine` (уведомления об
+  изменениях инфры: provisioning/reset/изоляция — engine слышит как смену
+  сим-состояния).
 - **Декларация мира и сценариев** → `data`. `engine` *исполняет* сценарий,
   не авторит.
 - **Наблюдение снаружи** → `collector`. **Действие над гостем** (reset/
   изоляция) — через `manage`/фабрику, **не** через in-guest агент.
   In-guest enrichment — опционально, best-effort.
 - **`runtime_kind`** (`vm`/`container`/`lite`, deployment-time) → `manage`
-  (service-mapping manifest). **`honeypot`** (назначение-наживка) → `data`
-  (свойство сервиса). Движок — **регистратор**, не симулятор. См.
+  (service-mapping manifest). Движок — **регистратор**, не симулятор. См.
   [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
+- **Образ `lite`-цели** (`cc-lite`) → `cybercity-clite` (Rust): параметризуется
+  дескриптором сервиса, деплоится в range-сегмент, наблюдается `collector`
+  out-of-band. См. [`adr/0001-repo-composition.md`](adr/0001-repo-composition.md)
+  и [`adr/0004-runtime-kind-vm-container-lite.md`](adr/0004-runtime-kind-vm-container-lite.md).
 
-## История переименований
+## Имена и обоснование
 
-- `cybercity-agents` → **`cybercity-collector`** (Rust): переосмыслен из
-  in-guest «агента» во внешний out-of-band per-host коллектор. Crate-имена
-  `ccna-*` → `ccc-*` (cyber city collector); бинарник `cybercity-node-agent`
-  → `cybercity-collector`.
-- `cybercity-blueprints` → **`cybercity-manage`** (Python): из IaC-шаблонов
-  (Ansible/Terraform) в контрольную плоскость, оркестрирующую реальный IaC
-  под собой (а не переписывающую provisioning заново).
-- `cybercity-scenarios` (упоминался в старых доках) — **не отдельное репо**;
-  авторинг сценариев вошёл в `cybercity-data`.
-- `cybercity-simulator` (упоминался в старых доках) — **не отдельное репо**;
-  эмуляция трафика вошла в `cybercity-engine`.
+- **`cybercity-collector`** (Rust) назван коллектором, а не «агентом», потому что
+  это внешний out-of-band per-host наблюдатель, а не in-guest агент
+  (ADR-0003). Crate-имена `ccc-*` (cyber city collector); бинарник
+  `cybercity-collector`.
+- **`cybercity-manage`** (Python) — контрольная плоскость, оркестрирующая реальный
+  IaC (Ansible/Terraform/Pulumi) под собой, а не переписывающая provisioning
+  заново.
+- **`cybercity-clite`** (не `cybercity-lite`), чтобы не читалось как «облегчённая
+  cybercity»; образ/бинарь — `cc-lite` (`cc` = cyber city). См. ADR-0001/0004.
+- Авторинг сценариев живёт **в `cybercity-data`**, отдельного репо сценариев нет.
+- Эмуляция трафика живёт **в `cybercity-engine`**, отдельного репо симулятора нет.
 
 ## Статус реализации (кратко)
 
@@ -109,14 +112,23 @@
 - `cybercity-engine` — скелет: домен, tick-loop, причинный граф, API/WS.
   TODO: persistence (PostgreSQL), consumer-loop Redpanda, reset-from-snapshot,
   runner сценариев, scoring.
-- `cybercity-collector` — MVP-скелет: текущий код ещё in-guest (config/
-  host-bridge/telemetry/kafka-transport/command). Рефакторинг зондов в
-  out-of-band (fs/net/mem/proc/syscall) + настоящая Ed25519-подпись + реальный
-  Kafka-transport — отдельный заход.
+- `cybercity-collector` — стартовый скелет (config/transport/command). Целевой
+  облик — out-of-band зонды (fs/net/mem/proc/syscall) с настоящей
+  Ed25519-подписью и реальным Kafka-transport; доведение до него — отдельный
+  заход (ADR-0003).
 - `cybercity-manage` — стартовая точка: контрольная плоскость поверх
   Proxmox API + Terraform/Pulumi (provisioning, reset, изоляция, квоты).
+- `cybercity-clite` — стартовая точка: образ `cc-lite` — параметризуемая
+  заглушка (биндит порты, поддельный баннер по дескриптору, heartbeat
+  коллектору). Контракт дескриптор → поведение и `cc-lite` ↔ collector — TBD.
 - `cybercity-ui` — каркас: карта, таймлайн, дашборды.
 
-## Лицензии
+Дорожная карта к первой публичной демонстрации — в
+[`ARCHITECTURE.md`](ARCHITECTURE.md) (§ «Дорожная карта»).
 
-- Код: MIT. Документация: CC BY 4.0.
+## Связанные документы
+
+- [`VISION.md`](VISION.md) — зачем проект существует, принципы, аудитории.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — системная архитектура, два графа, hybrid execution, слои.
+- [`CONVENTIONS.md`](CONVENTIONS.md) — кросс-репо конвенции и правило лицензий.
+- [`adr/`](adr/) — сквозные архитектурные решения.
