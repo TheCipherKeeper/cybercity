@@ -25,7 +25,7 @@ UI), имеют разные циклы зрелости и разные CI/ли
 - `cybercity-engine` — event-driven runtime (Go);
 - `cybercity-manage` — контрольная плоскость (Python поверх Proxmox/IaC);
 - `cybercity-collector` — out-of-band per-host коллектор (Rust);
-- `cybercity-clite` — параметризуемый stub-образ `cc-lite` для `runtime_kind: lite` (Rust);
+- `cybercity-clite` — параметризуемый stub-образ `clite` для `runtime_kind: lite` (Rust);
 - `cybercity-ui` — web-фронтенд (TS).
 
 Системное видение, архитектура, конвенции и сквозные ADR живут в хабе
@@ -33,7 +33,7 @@ UI), имеют разные циклы зрелости и разные CI/ли
 
 ### Почему `cybercity-clite` отдельным репо
 
-`cc-lite` — единственный артефакт системы, который живёт **внутри range-сегмента**
+`clite` — единственный артефакт системы, который живёт **внутри range-сегмента**
 (ненадёжная плоскость): он и есть наблюдаемая `lite`-цель. Положить его в
 `cybercity-manage` (Python) — не тот стек; в `cybercity-collector` (Rust, но
 mgmt/out-of-band) — смешивает range- и mgmt-артефакты в одном репо и размывает
@@ -43,7 +43,7 @@ mgmt/out-of-band) — смешивает range- и mgmt-артефакты в о
 крейты (event envelope, подпись).
 
 Имя `cybercity-clite` (не `cybercity-lite`), чтобы не читалось как «облегчённая
-cybercity»; образ/бинарь — `cc-lite` (`cc` = cyber city). См. также ADR-0004,
+cybercity»; образ/бинарь — `clite` (от «container lite»). См. также ADR-0004,
 где `lite` — дефолтный `runtime_kind`.
 
 ## Consequences
@@ -58,7 +58,7 @@ cybercity»; образ/бинарь — `cc-lite` (`cc` = cyber city). См. т
 ### Negative
 
 - Контракты между репозиториями надо поддерживать явно (схемы, event envelope,
-  дескриптор сервиса → поведение `cc-lite`).
+  дескриптор сервиса → поведение `clite`).
 - Перекрёстные ссылки — через GitHub URL, не через файловые пути.
 
 ## Alternatives considered
@@ -66,14 +66,14 @@ cybercity»; образ/бинарь — `cc-lite` (`cc` = cyber city). См. т
 - **Монорепа**: единое дерево со всеми слоями — отвергнуто (стеки и циклы
   разные, единое дерево мешает независимой эволюции слоёв).
 - **Монорепа + git submodules**: гибрид — лишняя сложность git, не оправдано.
-- **`cc-lite` внутри `cybercity-collector`**: отвергнуто — range-артефакт в
+- **`clite` внутри `cybercity-collector`**: отвергнуто — range-артефакт в
   mgmt-репо размывает доверительную границу (ADR-0002).
 
 ## Related
 
 - [`../COMPOSITION.md`](../COMPOSITION.md) — состав и контракты.
 - [`../CONVENTIONS.md`](../CONVENTIONS.md) — скелет репозитория, иерархия доков.
-- [`0002-trust-boundary.md`](0002-trust-boundary.md) — почему `cc-lite` не может
+- [`0002-trust-boundary.md`](0002-trust-boundary.md) — почему `clite` не может
   жить в mgmt-репо.
 - [`0004-runtime-kind-vm-container-lite.md`](0004-runtime-kind-vm-container-lite.md)
-  — `runtime_kind: lite`, который реализует `cc-lite`.
+  — `runtime_kind: lite`, который реализует `clite`.

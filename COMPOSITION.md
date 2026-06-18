@@ -101,7 +101,7 @@
   IaC (Ansible/Terraform/Pulumi) под собой, а не переписывающая provisioning
   заново.
 - **`cybercity-clite`** (не `cybercity-lite`), чтобы не читалось как «облегчённая
-  cybercity»; образ/бинарь — `clite` (`cc` = cyber city). См. ADR-0001/0004.
+  cybercity»; образ/бинарь — `clite` (от «container lite»). См. ADR-0001/0004.
 - Авторинг сценариев живёт **в `cybercity-data`**, отдельного репо сценариев нет.
 - Эмуляция трафика живёт **в `cybercity-engine`**, отдельного репо симулятора нет.
 
