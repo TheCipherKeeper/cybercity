@@ -56,7 +56,7 @@ flowchart TB
 | Компонент | Функция |
 |-----------|---------|
 | **cybercity-data** | Декларативная модель города (source of truth), валидация, генерация артефактов (`engine.zip`, `topology.json`, …), авторинг сценариев. |
-| **cybercity-engine** | Runtime-состояние, обработка событий, propagation, причинный граф, снапшоты, scoring, исполнение сценариев. |
+| **cybercity-engine** | Runtime-состояние, обработка событий, причинный граф (реконструируется из наблюдений), снапшоты, scoring, валидатор vuln-`requires`, исполнение сценариев. |
 | **cybercity-ui** | Визуализация (карта, таймлайн, дашборды), ввод игрока, real-time обновления по WebSocket от engine + чтение статичной `topology.json` из data. |
 | **cybercity-manage** | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты/мульти-тенантность; размещает коллектор на хостах; координирует engine через control API + Redpanda. |
 | **cybercity-collector** | Внешний out-of-band per-host наблюдатель; подписанные события в engine по Kafka; control-канал от manage. |
@@ -70,15 +70,21 @@ flowchart TB
 Город моделируется через два связанных графа (концепция; поля — в
 `cybercity-engine`/docs/MODELS.md):
 
-- **Топологический граф** (статический) — *что с чем связано*. Загружается из
+- **Топологический граф** (статический) — *что откуда достижимо*. Загружается из
   `cybercity-data`, иммутабелен во время симуляции. Узлы — сервисы, рёбра —
-  декларированные связи (`api-call`, `auth`, `db-read`, `backup-of`, …) плюс
-  inferred (`same_network`, `same_org`, `exposure_chain`).
+  **нетипизированная достижимость** (без видов): наличие ребра выводится из общей
+  сети (`same_network`), объявленной экспозиции (`exposure`) и Multus per-service
+  IP. Типизированных рёбер (`api-call` / `auth` / `db-read` / …) нет — обоснование
+  в [`adr/0008-topology-reachability-only-observed-propagation.md`](adr/0008-topology-reachability-only-observed-propagation.md).
 - **Событийный граф** (динамический, append-only) — *что произошло и почему*.
   Узлы — события, рёбра — `caused_by`, `propagated_to`, `triggered_rule`,
   `response_to`. Даёт attack provenance, replay, explainability.
 
-Топология — рельсы; события — поезда. Подробно — в
+Пропагация исходов **наблюдается коллектором, не вычисляется движком**
+([ADR-0008](adr/0008-topology-reachability-only-observed-propagation.md)):
+движок — регистратор, записывает наблюдённые смены состояния, а не выводит «B
+пало» из ребра A→B. Топология — рельсы (куда можно дойти); события — поезда (что
+реально проехало — видно коллектору, записывается движком). Подробно — в
 [`cybercity-engine`/docs/ARCHITECTURE.md](https://github.com/TheCipherKeeper/cybercity-engine/blob/main/docs/ARCHITECTURE.md).
 
 ## Hybrid execution

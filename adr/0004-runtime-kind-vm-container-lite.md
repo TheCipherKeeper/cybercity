@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Amended — §1 (`cve_id` в дескрипторе сервиса) сужен в
+[ADR-0006](0006-vulnerability-declarative-overlay-realism.md) §1: `cve_id`
+живёт в vuln-сущности, не в дескрипторе сервиса. Остальные разделы (модель
+`runtime_kind`, «движок — регистратор», alternatives) не изменены и действуют.
 
 ## Scope
 

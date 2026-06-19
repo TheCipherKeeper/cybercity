@@ -10,9 +10,11 @@ Architecture Decision Records проекта. **Все ADR — и сквозны
 | [0001](0001-repo-composition.md) | Сквозное | Семь репозиториев (состав; `cybercity-clite` отдельным репо) | Accepted |
 | [0002](0002-trust-boundary.md) | Сквозное | Доверенная vs best-effort плоскость | Accepted |
 | [0003](0003-collector-rust-out-of-band.md) | Сквозное | Коллектор на Rust, out-of-band | Accepted |
-| [0004](0004-runtime-kind-vm-container-lite.md) | Сквозное | `runtime_kind` {vm, container, lite}; движок — регистратор | Accepted |
+| [0004](0004-runtime-kind-vm-container-lite.md) | Сквозное | `runtime_kind` {vm, container, lite}; движок — регистратор | Amended → 0006 |
 | [0005](0005-adr-centralized-in-hub.md) | Сквозное | Все ADR — только в хабе `cybercity/adr/` | Accepted |
 | [0006](0006-vulnerability-declarative-overlay-realism.md) | Сквозное | Уязвимость — декларативная сущность; overlay-артефакт; realism {real, narrative} | Accepted |
+| [0007](0007-mvp-scope.md) | Сквозное | MVP scope — микро-город, container+lite, три зонда, append-only | Accepted |
+| [0008](0008-topology-reachability-only-observed-propagation.md) | Сквозное | Топологический граф — только достижимость; пропагация наблюдается, не вычисляется | Accepted |
 
 Формат ADR — в [`../CONVENTIONS.md`](../CONVENTIONS.md). Состав и контракты —
 в [`../COMPOSITION.md`](../COMPOSITION.md).
