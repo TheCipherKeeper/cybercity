@@ -18,10 +18,10 @@
 | Слой | Репо | Язык | Назначение |
 |---|---|---|---|
 | Витрина | [`cybercity`](https://github.com/TheCipherKeeper/cybercity) | — | обложка/индекс проекта; системные документы (без кода) |
-| Данные | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев |
+| Данные | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев + уязвимости (манифест + overlay-исходники) |
 | Runtime | [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine) | Go | событийное ядро: топологический + причинный граф, tick-loop, replay, эмуляция трафика, scoring |
 | Lite-цель | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | параметризуемый stub-образ `clite` для `runtime_kind: lite` (реальный сокет + поддельный баннер по дескриптору сервиса); живёт в range-сегменте, наблюдается коллектором out-of-band |
-| Управление | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Python | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты, мульти-тенантность; оркестрирует Proxmox API + Terraform/Pulumi; размещает доверенный коллектор |
+| Управление | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Python | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты, мульти-тенантность; оркестрирует Proxmox API + Terraform/Pulumi; размещает доверенный коллектор; generic consumer `overlays`-артефакта (сборка образов по service-mapping) |
 | Коллектор | [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) | Rust | внешний out-of-band per-host коллектор: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range-сегмента |
 | Визуал | [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui) | TS (+возм. Rust) | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты |
 
@@ -31,18 +31,25 @@
    `topology.json`, `attack-surface.json`, `schema.json`) — контракт
    **data → engine/ui**. Модель города: 46 организаций / 263 сервиса /
    464 линка; IP/CIDR генерируются аллокатором, воспроизводимо через `--seed`.
-2. `cybercity-data` также авторит **сценарии** → артефакт сценария
+2. `cybercity-data build` → **`overlays`-артефакт** (каталог уязвимостей +
+   tarball overlay-плейбуков) — контракт **data → manage**
+   ([ADR-0006](adr/0006-vulnerability-declarative-overlay-realism.md)).
+   Уязвимость — first-class сущность: манифест + overlay-исходники рядом (один
+   PR = одна vuln); `cve_id` живёт в vuln-сущности, не в дескрипторе сервиса.
+3. `cybercity-data` также авторит **сценарии** → артефакт сценария
    (цели, injects, флаги, scoring-rubric, timebox) — контракт
    **data → engine**. `data` порождает декларацию, `engine` исполняет.
-3. `cybercity-engine` грузит `engine.zip`, ведёт world-state и причинный
+4. `cybercity-engine` грузит `engine.zip`, ведёт world-state и причинный
    граф, исполняет сценарии, считает scoring.
-4. `cybercity-collector` (по одному на хост) наблюдает гостей **снаружи** →
+5. `cybercity-collector` (по одному на хост) наблюдает гостей **снаружи** →
    подписанные события по Kafka (mgmt-плоскость) → `cybercity-engine` как
    **авторитетный** поток (на нём считается scoring); control-канал идёт
    от `cybercity-manage` («наблюдать X», «снапшот сейчас», «обновить политику»).
-5. `cybercity-manage` дёргает гипервизор/фабрику: provisioning, snapshot/reset,
-   изоляция; `engine` слышит об изменениях инфры как о смене сим-состояния.
-6. `cybercity-ui` читает `topology.json` + поток событий `engine` (WebSocket).
+6. `cybercity-manage` — **generic consumer** `overlays`-артефакта: по
+   `service-mapping` + `overlay-id` собирает образы (Packer/Ansible) и деплоит;
+   дёргает гипервизор/фабрику (provisioning, snapshot/reset, изоляция). Семантики
+   vuln не знает. `engine` слышит об изменениях инфры как о смене сим-состояния.
+7. `cybercity-ui` читает `topology.json` + поток событий `engine` (WebSocket).
 
 ## Доверительная граница
 
@@ -78,8 +85,12 @@
   топологии) + Redpanda control-topic `manage → engine` (уведомления об
   изменениях инфры: provisioning/reset/изоляция — engine слышит как смену
   сим-состояния).
-- **Декларация мира и сценариев** → `data`. `engine` *исполняет* сценарий,
-  не авторит.
+- **Декларация мира, сценариев и уязвимостей** → `data`. Уязвимость —
+  first-class сущность (манифест + overlay-исходники, `realism ∈ {real,
+  narrative}`); `cve_id` живёт в vuln-сущности, не в дескрипторе сервиса
+  ([ADR-0006](adr/0006-vulnerability-declarative-overlay-realism.md)). `engine`
+  *исполняет* сценарий, не авторит; `manage` *собирает* образы из
+  `overlays`-артефакта, не владеет контентом vuln.
 - **Наблюдение снаружи** → `collector`. **Действие над гостем** (reset/
   изоляция) — через `manage`/фабрику, **не** через in-guest агент.
   In-guest enrichment — опционально, best-effort.
@@ -108,7 +119,8 @@
 ## Статус реализации (кратко)
 
 - `cybercity-data` — зрелый: модель, валидация, аллокатор, сборка артефактов,
-  CI (95% coverage, mypy --strict). Авторинг сценариев — в работе.
+  CI (95% coverage, mypy --strict). Авторинг сценариев — в работе. Авторинг
+  уязвимостей (манифест + overlay-исходники, ADR-0006) — не начат.
 - `cybercity-engine` — скелет: домен, tick-loop, причинный граф, API/WS.
   TODO: persistence (PostgreSQL), consumer-loop Redpanda, reset-from-snapshot,
   runner сценариев, scoring.
@@ -120,7 +132,11 @@
   Proxmox API + Terraform/Pulumi (provisioning, reset, изоляция, квоты).
 - `cybercity-clite` — стартовая точка: образ `clite` — параметризуемая
   заглушка (биндит порты, поддельный баннер по дескриптору, heartbeat
-  коллектору). Контракт дескриптор → поведение и `clite` ↔ collector — TBD.
+  коллектору). Контракт дескриптор → поведение и `clite` ↔ collector — TBD;
+  для `narrative`-vuln (`vuln_behavior`: trigger → materialize-observable)
+  решение зафиксировано в
+  [ADR-0006](adr/0006-vulnerability-declarative-overlay-realism.md), полная
+  мини-спека — будущий док `cybercity-clite`/docs.
 - `cybercity-ui` — каркас: карта, таймлайн, дашборды.
 
 Дорожная карта к первой публичной демонстрации — в

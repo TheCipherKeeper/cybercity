@@ -12,6 +12,7 @@ Architecture Decision Records проекта. **Все ADR — и сквозны
 | [0003](0003-collector-rust-out-of-band.md) | Сквозное | Коллектор на Rust, out-of-band | Accepted |
 | [0004](0004-runtime-kind-vm-container-lite.md) | Сквозное | `runtime_kind` {vm, container, lite}; движок — регистратор | Accepted |
 | [0005](0005-adr-centralized-in-hub.md) | Сквозное | Все ADR — только в хабе `cybercity/adr/` | Accepted |
+| [0006](0006-vulnerability-declarative-overlay-realism.md) | Сквозное | Уязвимость — декларативная сущность; overlay-артефакт; realism {real, narrative} | Accepted |
 
 Формат ADR — в [`../CONVENTIONS.md`](../CONVENTIONS.md). Состав и контракты —
 в [`../COMPOSITION.md`](../COMPOSITION.md).
