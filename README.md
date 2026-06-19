@@ -33,16 +33,23 @@ red / blue team.
 
 ## Навигация по слоям
 
-```
-                    ┌──────────────────────────┐
-                    │      cybercity (cover)   │ ← вы здесь
-                    └─────────────┬────────────┘
-                                  │ системные документы
-        ┌────────────┬────────────┼────────────┬────────────┐
-        ▼            ▼            ▼            ▼            ▼            ▼
-   cybercity-    cybercity-    cybercity-   cybercity-   cybercity-   cybercity-
-     data         engine          ui       collector     manage       clite
- (model+сцен.) (Go runtime)  (2D-карта) (out-of-band) (control plane) (lite-цель)
+```mermaid
+flowchart TB
+    Cover["cybercity (cover)<br/>системные документы<br/>← вы здесь"]
+
+    Data["cybercity-data<br/>(model + сцен.)"]
+    Engine["cybercity-engine<br/>(Go runtime)"]
+    UI["cybercity-ui<br/>(виз. города)"]
+    Collector["cybercity-collector<br/>(out-of-band)"]
+    Manage["cybercity-manage<br/>(control plane)"]
+    Clite["cybercity-clite<br/>(lite-цель)"]
+
+    Cover --> Data
+    Cover --> Engine
+    Cover --> UI
+    Cover --> Collector
+    Cover --> Manage
+    Cover --> Clite
 ```
 
 Авторитетная таблица репозиториев (слой / язык / назначение) — в
