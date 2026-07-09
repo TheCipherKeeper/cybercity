@@ -54,8 +54,8 @@ overlay-модель vuln ([ADR-0006](0006-vulnerability-declarative-overlay-rea
   без изменений ([ADR-0003](0003-collector-rust-out-of-band.md)). Vuln-proof
   пишется только под эти зонды — словарь observables =这三个.
 - **Persistence:** in-memory `WorldState` + append-only JSONL audit-log.
-  Replay читает JSONL — детерминизм сохранён ([`../VISION.md`](../VISION.md)
-  принцип «события — единственный источник истины»). PostgreSQL
+  Replay читает JSONL — детерминизм сохранён ([`../COMPOSITION.md`](../COMPOSITION.md)
+  § «Принципы и аудитории», «события — единственный источник истины»). PostgreSQL
   подключается позже как swap storage; движок не меняется.
 - **Сценарии:** один YAML-сценарий — та kill-chain из 3 vuln (`preconditions`
   как рёбра DAG, `scoring.requires`). Контракт `data → engine` тот же;
@@ -67,11 +67,11 @@ overlay-модель vuln ([ADR-0006](0006-vulnerability-declarative-overlay-rea
   (детерминированный `flag = f(seed, scenario_id, vuln_id)`,
   per-player-unique out of scope, [ADR-0006](0006-vulnerability-declarative-overlay-realism.md)
   §4). Демо в single-player = без рассинхрона с дизайном; scale-таблицу
-  ([`../ARCHITECTURE.md`](../ARCHITECTURE.md) § «Целевые показатели») для
+  ([`../COMPOSITION.md`](../COMPOSITION.md) § «Целевые показатели») для
   MVP читаем как «1 игрок».
 - **UI:** 2D-граф топологии (из `topology.json`) + live event-log (WebSocket
   от engine) + одно действие игрока. Покрывает критерии успеха
-  ([`../VISION.md`](../VISION.md)) №1 (живой граф) и №2 (событие
+  ([`../COMPOSITION.md`](../COMPOSITION.md) § «Критерии успеха») №1 (живой граф) и №2 (событие
   распространяется). Red/blue-дашборды, отчёты — future.
 
 ### 2. Deferred (явно за рамками мин-релиза; архитектурно заложено)
@@ -167,11 +167,9 @@ future:
 ## Related
 
 - [`../COMPOSITION.md`](../COMPOSITION.md) — состав, контракты, статус
-  реализации (правка scale на single-player MVP).
-- [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — дорожная карта к первой
-  демонстрации; § «Целевые показатели масштабируемости» (правка на MVP).
-- [`../VISION.md`](../VISION.md) — критерии успеха (№1, №2 покрываются UI
-  мин-релиза).
+  реализации (правка scale на single-player MVP), дорожная карта, целевые
+  показатели, критерии успеха.
+- [ADR-0004](0004-runtime-kind-vm-container-lite.md) — `runtime_kind`; `vm`
 - [ADR-0004](0004-runtime-kind-vm-container-lite.md) — `runtime_kind`; `vm`
   отложен, `container`/`lite` в MVP.
 - [ADR-0006](0006-vulnerability-declarative-overlay-realism.md) — overlay-

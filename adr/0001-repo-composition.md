@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Accepted — выбор стека `cybercity-manage` (Python) superseded в
+[ADR-0009](0009-manage-implementation-language-go.md): manage реализуется на
+Go (`bpg/proxmox-go-sdk`, `hashicorp/terraform-exec`/Pulumi Go SDK). Основной
+тезис (семь репозиториев, состав) не изменён; строки про manage ниже обновлены
+под новое решение.
 
 ## Scope
 
@@ -11,8 +15,8 @@ Accepted
 ## Context
 
 CyberCity — это слоёная система, где разные слои живут на разных стеках
-(Python для данных, Go для runtime, Rust для коллектора и lite-целей, TS для
-UI), имеют разные циклы зрелости и разные CI/линтер-цепочки. Размещать всё это
+(Python для данных, Go для runtime и контрольной плоскости, Rust для
+коллектора и lite-целей, TS для UI), имеют разные циклы зрелости и разные CI/линтер-цепочки. Размещать всё это
 в одном дереве мешало бы независимой эволюции слоёв и снижало строгость: в
 единой большой репе слои легко начинают дрейфовать друг от друга.
 
@@ -23,7 +27,7 @@ UI), имеют разные циклы зрелости и разные CI/ли
 - `cybercity` — обложка/индекс + системные документы (без кода);
 - `cybercity-data` — декларативная модель + авторинг сценариев (Python);
 - `cybercity-engine` — event-driven runtime (Go);
-- `cybercity-manage` — контрольная плоскость (Python поверх Proxmox/IaC);
+- `cybercity-manage` — контрольная плоскость (Go поверх Proxmox/IaC);
 - `cybercity-collector` — out-of-band per-host коллектор (Rust);
 - `cybercity-clite` — параметризуемый stub-образ `clite` для `runtime_kind: lite` (Rust);
 - `cybercity-ui` — web-фронтенд (TS).
@@ -35,7 +39,7 @@ UI), имеют разные циклы зрелости и разные CI/ли
 
 `clite` — единственный артефакт системы, который живёт **внутри range-сегмента**
 (ненадёжная плоскость): он и есть наблюдаемая `lite`-цель. Положить его в
-`cybercity-manage` (Python) — не тот стек; в `cybercity-collector` (Rust, но
+`cybercity-manage` (Go) — не тот стек; в `cybercity-collector` (Rust, но
 mgmt/out-of-band) — смешивает range- и mgmt-артефакты в одном репо и размывает
 доверительную границу (ADR-0002). Отдельный репо на Rust держит границу чистой,
 даёт образу свой релизный цикл (Docker-образ, деплоящийся per-lite-target по
@@ -77,3 +81,5 @@ cybercity»; образ/бинарь — `clite` (от «container lite»). См
   жить в mgmt-репо.
 - [`0004-runtime-kind-vm-container-lite.md`](0004-runtime-kind-vm-container-lite.md)
   — `runtime_kind: lite`, который реализует `clite`.
+- [`0009-manage-implementation-language-go.md`](0009-manage-implementation-language-go.md)
+  — Go как язык реализации manage; supersede стек-части этого ADR.

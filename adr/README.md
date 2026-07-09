@@ -15,6 +15,10 @@ Architecture Decision Records проекта. **Все ADR — и сквозны
 | [0006](0006-vulnerability-declarative-overlay-realism.md) | Сквозное | Уязвимость — декларативная сущность; overlay-артефакт; realism {real, narrative} | Accepted |
 | [0007](0007-mvp-scope.md) | Сквозное | MVP scope — микро-город, container+lite, три зонда, append-only | Accepted |
 | [0008](0008-topology-reachability-only-observed-propagation.md) | Сквозное | Топологический граф — только достижимость; пропагация наблюдается, не вычисляется | Accepted |
+| [0009](0009-manage-implementation-language-go.md) | `manage` | Go как язык реализации контрольной плоскости (supersede стек-части ADR-0001) | Accepted |
+| [0010](0010-data-broker-producer.md) | `data` | `cybercity-data` как broker-участник (publish `city.build.completed`); `CONVENTIONS@v1` | Accepted |
 
-Формат ADR — в [`../CONVENTIONS.md`](../CONVENTIONS.md). Состав и контракты —
-в [`../COMPOSITION.md`](../COMPOSITION.md).
+Формат ADR — в [`../AGENTS.md`](../AGENTS.md) → *ADR-формат*; шаблон —
+[`_TEMPLATE.md`](_TEMPLATE.md). Состав и контракты — в
+[`../COMPOSITION.md`](../COMPOSITION.md); envelope — в
+[`../CONVENTIONS.md`](../CONVENTIONS.md).

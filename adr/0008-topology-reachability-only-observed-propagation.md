@@ -13,8 +13,8 @@ Accepted
 До сих пор топологический граф моделировался типизированными рёбрами
 (`api-call`, `auth`, `db-read`, `backup-of`, `same_org`, `exposure_chain`, …),
 а движок **вычислял** пропагацию исходов по этим рёбрам (см.
-[`../DATA_FLOW.md`](../DATA_FLOW.md) § «Жизненный цикл события», шаг Propagation;
-[`../ARCHITECTURE.md`](../ARCHITECTURE.md) § «Два графа»). Три проблемы:
+[`../COMPOSITION.md`](../COMPOSITION.md) § «Жизненный цикл события», шаг
+Наблюдение исхода; § «Два графа»). Три проблемы:
 
 1. **Ненаблюдаемость.** Коллектор out-of-band видит сокеты, соединения, состояние
    хоста (fs/net/mem/proc) — но не «креда `svc_db` использована для auth в B»
@@ -65,7 +65,7 @@ reachable), Multus per-service IP. Никаких `api-call` / `auth` / `db-read
 `caused_by` / `propagated_to` / `triggered_rule` / `response_to`). Причинность
 **реконструируется** из наблюдённых событий, не вычисляется вперёд. Принцип
 «события — единственный источник истины»
-([`../VISION.md`](../VISION.md)) — на месте.
+([`../COMPOSITION.md`](../COMPOSITION.md) § «Принципы и аудитории») — на месте.
 
 ## Consequences
 
