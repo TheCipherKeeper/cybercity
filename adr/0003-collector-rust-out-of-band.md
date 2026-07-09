@@ -4,11 +4,15 @@
 
 Accepted
 
+## Scope
+
+Сквозное.
+
 ## Context
 
 Нужен наблюдатель за гостями, поток которого можно доверять (см. ADR-0002).
-In-guest «агент» (`cybercity-agents` / `cybercity-node-agent`) ненадёжен: живёт
-в компрометируемой среде, может быть подменён, тянуть брокера из гостя нельзя.
+In-guest агент ненадёжен по определению: живёт в компрометируемой среде, может
+быть подменён, тянуть брокера из гостя нельзя.
 
 ## Decision
 
@@ -21,8 +25,7 @@ In-guest «агент» (`cybercity-agents` / `cybercity-node-agent`) ненад
   которому доверяем.
 - Подпись событий Ed25519; транспорт Kafka (mTLS + ACL); control-канал от
   `cybercity-manage`.
-- Переименование: `cybercity-agents` → `cybercity-collector`; crate-имена
-  `ccna-*` → `ccc-*`; бинарник `cybercity-node-agent` → `cybercity-collector`.
+- Crate-имена `ccc-*` (cyber city collector); бинарник `cybercity-collector`.
 
 ## Consequences
 
@@ -34,15 +37,18 @@ In-guest «агент» (`cybercity-agents` / `cybercity-node-agent`) ненад
 ### Negative
 
 - Зонды требуют прав на гипервизоре/узле; часть — привилегированные.
-- Состояние кода сейчас — in-guest MVP; переход на out-of-band — отдельный заход.
+- Построение out-of-band зондов (fs/net/mem/proc/syscall) с настоящей
+  Ed25519-подписью и реальным Kafka-transport — отдельный заход; пока репо
+  держит стартовый скелет (config/transport/command), который доводится до
+  out-of-band.
 
 ## Alternatives considered
 
-- **In-guest агент (как было)**: отвергнут — ненадёжен в скомпрометированной среде.
+- **In-guest агент**: отвергнут — ненадёжен в скомпрометированной среде.
 - **Go/Python для коллектора**: возможны, но Rust даёт лучший профиль для
   per-host демона с доверием.
 
 ## Related
 
 - [`0002-trust-boundary.md`](0002-trust-boundary.md).
-- [`../COMPOSITION.md`](../COMPOSITION.md) — «История переименований».
+- [`../COMPOSITION.md`](../COMPOSITION.md) — «Имена и обоснование».

@@ -4,104 +4,89 @@
 [![License: MIT](https://img.shields.io/badge/code-MIT-green)](LICENSE)
 [![Docs: CC BY 4.0](https://img.shields.io/badge/docs-CC%20BY%204.0-lightgrey)](LICENSE-DOCS)
 
-**CyberCity** — модульный кибер-полигон. Симулирует целый город
-(больницы, электросеть, транспорт, банки, суды) для учений
-red / blue team.
+**CyberCity** — модульный кибер-полигон: цифровой двойник городской ИТ/ОТ-
+инфраструктуры для учений red/blue. Город моделируется как ориентированный граф
+(организации → сервисы → связи достижимости), декларируется как код, рендерится
+в артефакты, исполняется runtime. Не очередная CTF-машинка, а живой, наблюдаемый,
+объяснимый город, где инциденты распространяются через достижимость (каждое
+падение — наблюдённое коллектором событие). Всё крутится на вашем Proxmox / K8s,
+без SaaS и внешней телеметрии.
 
-Этот репозиторий — **обложка** проекта: здесь нет кода, но лежат
-**системные** документы — видение, архитектура, конвенции и сквозные ADR.
-Реализация каждого слоя — в отдельном репозитории (`cybercity-*`).
+Этот репозиторий — **хаб** программы: системные контракты и состав. Кода здесь
+нет. Реализация каждого слоя — в отдельном репозитории (`cybercity-*`).
+Методология построения — в
+[`TheCipherKeeper/ai-project-template`](https://github.com/TheCipherKeeper/ai-project-template).
 
-> Исходная точка: [`VISION.md`](VISION.md) — философия и дорожная карта.
-> Этот README — короткая выжимка; канон композиции — в
-> [`COMPOSITION.md`](COMPOSITION.md).
+## Что в хабе
 
-## Идея
+| Файл | Что |
+|---|---|
+| [`COMPOSITION.md`](COMPOSITION.md) | Состав программы: сервисы + интерфейсы + stub-таргеты, контракты, доверительная граница, ownership, потоки, статус реализации. Edge-реестр для verification «вниз». |
+| [`CONVENTIONS.md`](CONVENTIONS.md) | Event envelope и кросс-сервисные конвенции общения (версионируется `CONVENTIONS@vN`). |
+| [`AGENTS.md`](AGENTS.md) | Правила работы в хабе: приоритет доков, ветвление, можно/нельзя, версионирование контрактов, ADR-формат, нейминг, коммиты. |
+| [`docker-compose.yml`](docker-compose.yml) | Системный compose: все сервисы + брокер (Redpanda). |
+| [`adr/`](adr/) | Архитектурные решения (единый ADR-дом программы; индекс — `adr/README.md`). |
 
-Город — это **данные**. Симуляция, визуализация, отчёты, учения —
-проекции одного декларативного описания. Если данные хорошие,
-остальное получается само. Если плохие — никакой код не спасёт.
+## Репозитории программы
 
-Учения встраиваются в живую жизнь города. Атаковал светофоры — на
-карте реально меняется картинка, в отчёте это отражено. Не MMORPG,
-не сценарий-в-вакууме.
+| | Репозиторий | Роль | Стек |
+|---|---|---|---|
+| 🎯 | **[cybercity](https://github.com/TheCipherKeeper/cybercity)** | Хаб: системные контракты, состав, ADR (этот репо) | — |
+| 🗺️ | [cybercity-data](https://github.com/TheCipherKeeper/cybercity-data) | Декларативная модель города + авторинг сценариев + уязвимости; broker-участник (`city.build.completed`) | Python |
+| ⚙️ | [cybercity-engine](https://github.com/TheCipherKeeper/cybercity-engine) | Событийное ядро: топологический + причинный граф, tick-loop, replay, scoring; единственный мутатор | Go |
+| 🏗️ | [cybercity-manage](https://github.com/TheCipherKeeper/cybercity-manage) | Контрольная плоскость: provisioning, reset/изоляция, квоты; оркестрирует Proxmox + IaC | Go |
+| 📡 | [cybercity-collector](https://github.com/TheCipherKeeper/cybercity-collector) | Внешний out-of-band per-host коллектор; подписанные события в engine | Rust |
+| 🧩 | [cybercity-clite](https://github.com/TheCipherKeeper/cybercity-clite) | Stub-образ `clite` для `runtime_kind: lite` (passive target) | Rust |
+| 🖥️ | [cybercity-ui](https://github.com/TheCipherKeeper/cybercity-ui) | 2D-карта, таймлайн, дашборды red/blue | TS |
 
-## Документация в этом репозитории
+Канон состава, контрактов, пинов и доверительной границы — в
+[`COMPOSITION.md`](COMPOSITION.md). Выше — короткая карта для ориентирования.
 
-| Документ | Назначение |
-|----------|-----------|
-| [`COMPOSITION.md`](COMPOSITION.md) | Канон состава: репозитории, контракты, доверительная граница, история переименований. |
-| [`VISION.md`](VISION.md) | Философия, принципы, аудитории, критерии успеха, non-goals. |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Системная архитектура: контекст, ответственности, два графа, слои развёртывания. |
-| [`CONVENTIONS.md`](CONVENTIONS.md) | Кросс-репо конвенции: иерархия документов, язык, скелет репо, ADR/README-формат, event envelope. |
-| [`adr/`](adr/) | Сквозные архитектурные решения (почему 6 репо, доверительная граница, Rust-коллектор). |
+## Навигация по слоям
 
-## Композиция
-
-Каноническая карта слоёв, контрактов и доверительной границы —
-[`COMPOSITION.md`](COMPOSITION.md). Ниже — короткая выжимка.
-
+```mermaid
+flowchart TB
+    Cover["cybercity (хаб)<br/>системные контракты + состав<br/>← вы здесь"]
+    Data["cybercity-data<br/>(model + сцен. + broker)"]
+    Engine["cybercity-engine<br/>(Go runtime)"]
+    UI["cybercity-ui<br/>(виз. города)"]
+    Collector["cybercity-collector<br/>(out-of-band)"]
+    Manage["cybercity-manage<br/>(control plane)"]
+    Clite["cybercity-clite<br/>(lite-цель / stub)"]
+    Cover --> Data
+    Cover --> Engine
+    Cover --> UI
+    Cover --> Collector
+    Cover --> Manage
+    Cover --> Clite
 ```
-                    ┌──────────────────────────┐
-                    │      cybercity (cover)   │ ← вы здесь
-                    └─────────────┬────────────┘
-                                  │ системные документы
-        ┌────────────┬────────────┼────────────┬────────────┐
-        ▼            ▼            ▼            ▼            ▼
-   cybercity-    cybercity-    cybercity-   cybercity-   cybercity-
-     data         engine          ui       collector     manage
- (model+сцен.) (Go runtime)  (2D-карта) (out-of-band) (control plane)
+
+Профиль автора: [`TheCipherKeeper`](https://github.com/TheCipherKeeper/TheCipherKeeper) · [thecipherkeeper.github.io](https://thecipherkeeper.github.io).
+
+## Разработка
+
+```bash
+git checkout main && git pull && git checkout -b feat/<задача>
+# правки COMPOSITION/CONVENTIONS/compose/adr; проверка перед коммитом
+git commit -m "feat(conventions): ..." && git push   # PR в main
 ```
 
-Каждый репозиторий — один слайс системы. Одна и та же сетевая модель,
-разные слои. Никакого SaaS, никакой телеметрии к автору, всё крутится
-на твоём Proxmox / K8s.
+Прямой коммит в `main` запрещён; интеграция — только PR. Стабильные версии —
+тегами `vX.Y.Z` на `main`. Правила — [`AGENTS.md`](AGENTS.md).
 
-| | Репозиторий | Что делает |
-|---|---|---|
-| 🎯 | **[cybercity](https://github.com/TheCipherKeeper/cybercity)** | Обложка и системные документы (этот репо); канон композиции — [`COMPOSITION.md`](COMPOSITION.md) |
-| 🗺️ | [cybercity-data](https://github.com/TheCipherKeeper/cybercity-data) | Декларативная модель города (source of truth) + авторинг сценариев (Python) |
-| ⚙️ | [cybercity-engine](https://github.com/TheCipherKeeper/cybercity-engine) | Go runtime: событийное ядро, причинный граф, replay, эмуляция трафика, scoring |
-| 🏗️ | [cybercity-manage](https://github.com/TheCipherKeeper/cybercity-manage) | Контрольная плоскость: provisioning, reset/rollback, изоляция, квоты (Python поверх Proxmox/Terraform) |
-| 📡 | [cybercity-collector](https://github.com/TheCipherKeeper/cybercity-collector) | Внешний out-of-band per-host коллектор (Rust): подписанные события в engine по Kafka |
-| 🖥️ | [cybercity-ui](https://github.com/TheCipherKeeper/cybercity-ui) | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты |
+### Запуск всей программы
 
-Полная карта и общий стиль: [`TheCipherKeeper`](https://github.com/TheCipherKeeper/TheCipherKeeper) (профиль) и [thecipherkeeper.github.io](https://thecipherkeeper.github.io) (CV, развёрнутые описания).
+```bash
+cp .env.example .env            # заполнить per-сервис конф + BROKER_ADDR + CONVENTIONS_PIN
+docker compose config           # проверить
+docker compose up               # брокер + все сервисы (образы собраны заранее)
+```
 
-## Как читать
-
-1. **Композиция** — [`COMPOSITION.md`](COMPOSITION.md): репозитории, контракты, доверительная граница, история переименований.
-2. **Философия** — [`VISION.md`](VISION.md): что строим, зачем, в каком порядке.
-3. **Архитектура** — [`ARCHITECTURE.md`](ARCHITECTURE.md): системный контекст, два графа, слои.
-4. **Конвенции** — [`CONVENTIONS.md`](CONVENTIONS.md): иерархия доков, язык, скелет репо, форматы.
-5. **Каноническая модель города** — `organizations/*/config.yml` в [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) и его человекочитаемая проекция `build/network.md`.
-6. **Runtime** — [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine): событийное ядро, причинный граф, replay, эмуляция трафика.
-7. **Управление и сбор** — [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) (контрольная плоскость) + [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) (out-of-band коллектор).
-8. **Визуализация** — [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui): 2D-карта, таймлайн, дашборды.
-
-## Принципы
-
-- **События — единственный источник истины.** Состояние = проекция потока.
-- **Сеть декларативна.** Один YAML описывает всё. K8s — его проекция.
-- **Безопасность по умолчанию.** Сегменты изолированы, каналы — явные. OT не светится наружу.
-- **LLM — помощник, не хозяин.** LLM пишет YAML/код, валидаторы и тесты решают.
-- **Воспроизводимость.** Один вход → один выход. Детерминированный режим, фиксированный порядок ключей.
-
-## Как я работаю
-
-(Выжимка из [`CONVENTIONS.md`](CONVENTIONS.md) § «LLM — помощник, не хозяин» и репозиторных `AGENTS.md`.)
-
-- По одной сущности за итерацию. Не «30 организаций сразу».
-- Валидатор и тесты — единственный контракт правды. Каждое AI-изменение через `lint`/`test`.
-- LLM пишет YAML и код; валидаторы, линтеры и человек решают, что принято.
-- Коммиты и пуши — вручную. AI не пушит без явного одобрения.
-
-## Статус
-
-В активной разработке. Модель города: 46 организаций / 263 сервиса / 464 линка; сценарии учений авторятся в `cybercity-data` (формат в разработке).
-Дорожная карта — в [`VISION.md`](VISION.md) и [`ARCHITECTURE.md`](ARCHITECTURE.md) (§ «Дорожная карта»).
+Команды запуска/сборки отдельного сервиса — в его репозитории (там код и
+`Dockerfile`); в хабе их нет. Структура compose —
+[`ai-project-template/docs/refs/DEPLOYMENT.md`](https://github.com/TheCipherKeeper/ai-project-template/blob/main/docs/refs/DEPLOYMENT.md).
 
 ## Лицензия
 
-- Код: [MIT](LICENSE)
-- Документация: [CC BY 4.0](LICENSE-DOCS)
+Код — [MIT](LICENSE), документация — [CC BY 4.0](LICENSE-DOCS). Полное правило о
+лицензиях в каждом репозитории — [`AGENTS.md`](AGENTS.md) → *Лицензии*.

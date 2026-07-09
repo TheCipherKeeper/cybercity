@@ -1,0 +1,11 @@
+# .gitignore хаба. Секреты и артефакты — не коммитить.
+
+# Окружение
+.env
+
+# IDE / OS
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
