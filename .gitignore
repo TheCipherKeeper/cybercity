@@ -9,3 +9,8 @@
 .claude/
 .DS_Store
 Thumbs.db
+
+# CI evidence хранится как artifact
+verification.json
+.evidence/*
+!.evidence/README.md

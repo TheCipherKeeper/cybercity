@@ -8,9 +8,9 @@ stub-таргеты`): гейт перечисляет детей отсюда. 
 
 > Методология — в репозитории
 > [`TheCipherKeeper/ai-project-template`](https://github.com/TheCipherKeeper/ai-project-template)
-> (далее `<methodology-repo>`): топология — `docs/refs/TOPOLOGY.md`, общение
-> микросервисов — `docs/refs/COMMUNICATION.md`, verification gate —
-> `docs/refs/VERIFICATION.md`. Этот хаб — её инстанция; правила читаются из
+> (далее `<methodology-repo>`): границы и контракты — `docs/ARCHITECTURE.md`,
+> рабочий цикл и обязательная проверка — `docs/WORKFLOW.md`. Этот хаб — её
+> инстанция; правила читаются из
 > методологии, не копируются.
 
 **CyberCity** — модульный кибер-полигон: цифровой двойник городской ИТ/ОТ-
@@ -39,7 +39,7 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 
 > Сервис — клиент брокера; один репо, один стек, деплой контейнером. Пин
 > контракта — версия `CONVENTIONS`, на которой сервис работает; гейт проверяет
-> сервис против пина, не HEAD (`<methodology-repo>/docs/refs/VERIFICATION.md`).
+> сервис против пина, не HEAD (`<methodology-repo>/docs/ARCHITECTURE.md`).
 
 | Сервис | Репо | Стек | Роль | Публикует / Читает | Пин контракта |
 |---|---|---|---|---|---|
@@ -70,7 +70,7 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 > не брокер-клиент, не peer, без presentation-эндпоинтов. Параметризуется
 > дескриптором из `manage`, наблюдается `collector` out-of-band.
 > `CONVENTIONS@vN` к stub N/A (не потребляет envelope). Модель —
-> `<methodology-repo>/docs/refs/COMMUNICATION.md` → *Stub-таргет*.
+> `<methodology-repo>/docs/ARCHITECTURE.md`.
 
 | Цель | Репо | Стек | Поверхности | Параметризация | Наблюдатель |
 |---|---|---|---|---|---|
@@ -356,7 +356,7 @@ graph LR
 | `CONVENTIONS@v2` | — | <!-- planned breaking: напр. единый `trace_id` поверх `correlation_id`; схема `payload` по `event_type` --> |
 
 Правила версионирования — `AGENTS.md` → *Версионирование контрактов*; почему пин
-обязателен — `<methodology-repo>/docs/refs/VERIFICATION.md`. Изменение
+обязателен — `<methodology-repo>/docs/ARCHITECTURE.md`. Изменение
 выпущенной версии `@vN` задним числом запрещено; breaking — `@vN+1` отдельным
 PR, сервисы мигрируют каждый своим PR (бамп пина + правки).
 

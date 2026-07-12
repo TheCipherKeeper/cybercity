@@ -29,50 +29,22 @@
 
 ## Репозитории программы
 
-| | Репозиторий | Роль | Стек |
-|---|---|---|---|
-| 🎯 | **[cybercity](https://github.com/TheCipherKeeper/cybercity)** | Хаб: системные контракты, состав, ADR (этот репо) | — |
-| 🗺️ | [cybercity-data](https://github.com/TheCipherKeeper/cybercity-data) | Декларативная модель города + авторинг сценариев + уязвимости; broker-участник (`city.build.completed`) | Python |
-| ⚙️ | [cybercity-engine](https://github.com/TheCipherKeeper/cybercity-engine) | Событийное ядро: топологический + причинный граф, tick-loop, replay, scoring; единственный мутатор | Go |
-| 🏗️ | [cybercity-manage](https://github.com/TheCipherKeeper/cybercity-manage) | Контрольная плоскость: provisioning, reset/изоляция, квоты; оркестрирует Proxmox + IaC | Go |
-| 📡 | [cybercity-collector](https://github.com/TheCipherKeeper/cybercity-collector) | Внешний out-of-band per-host коллектор; подписанные события в engine | Rust |
-| 🧩 | [cybercity-clite](https://github.com/TheCipherKeeper/cybercity-clite) | Stub-образ `clite` для `runtime_kind: lite` (passive target) | Rust |
-| 🖥️ | [cybercity-ui](https://github.com/TheCipherKeeper/cybercity-ui) | 2D-карта, таймлайн, дашборды red/blue | TS |
-
-Канон состава, контрактов, пинов и доверительной границы — в
-[`COMPOSITION.md`](COMPOSITION.md). Выше — короткая карта для ориентирования.
-
-## Навигация по слоям
-
-```mermaid
-flowchart TB
-    Cover["cybercity (хаб)<br/>системные контракты + состав<br/>← вы здесь"]
-    Data["cybercity-data<br/>(model + сцен. + broker)"]
-    Engine["cybercity-engine<br/>(Go runtime)"]
-    UI["cybercity-ui<br/>(виз. города)"]
-    Collector["cybercity-collector<br/>(out-of-band)"]
-    Manage["cybercity-manage<br/>(control plane)"]
-    Clite["cybercity-clite<br/>(lite-цель / stub)"]
-    Cover --> Data
-    Cover --> Engine
-    Cover --> UI
-    Cover --> Collector
-    Cover --> Manage
-    Cover --> Clite
-```
+Канонические состав, роли, стеки, контракты, пины и доверительная граница
+описаны только в [`COMPOSITION.md`](COMPOSITION.md).
 
 Профиль автора: [`TheCipherKeeper`](https://github.com/TheCipherKeeper/TheCipherKeeper) · [thecipherkeeper.github.io](https://thecipherkeeper.github.io).
 
 ## Разработка
 
 ```bash
-git checkout main && git pull && git checkout -b feat/<задача>
+git checkout main && git pull && git checkout -b feat/TASK-NNNN-<slug>
 # правки COMPOSITION/CONVENTIONS/compose/adr; проверка перед коммитом
 git commit -m "feat(conventions): ..." && git push   # PR в main
 ```
 
-Прямой коммит в `main` запрещён; интеграция — только PR. Стабильные версии —
-тегами `vX.Y.Z` на `main`. Правила — [`AGENTS.md`](AGENTS.md).
+Прямой коммит в `main` запрещён; интеграция — только PR со squash merge.
+Стабильная версия `vX.Y.Z` создаётся отдельной задачей человека. Правила —
+[`AGENTS.md`](AGENTS.md).
 
 ### Запуск всей программы
 
@@ -84,7 +56,7 @@ docker compose up               # брокер + все сервисы (обра
 
 Команды запуска/сборки отдельного сервиса — в его репозитории (там код и
 `Dockerfile`); в хабе их нет. Структура compose —
-[`ai-project-template/docs/refs/DEPLOYMENT.md`](https://github.com/TheCipherKeeper/ai-project-template/blob/main/docs/refs/DEPLOYMENT.md).
+[`ai-project-template/docs/OPERATIONS.md`](https://github.com/TheCipherKeeper/ai-project-template/blob/main/docs/OPERATIONS.md).
 
 ## Лицензия
 
