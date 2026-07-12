@@ -1,64 +1,119 @@
 # CyberCity
 
-[![Part of CyberCity](https://img.shields.io/badge/CyberCity-composition-blueviolet)](#)
-[![License: MIT](https://img.shields.io/badge/code-MIT-green)](LICENSE)
-[![Docs: CC BY 4.0](https://img.shields.io/badge/docs-CC%20BY%204.0-lightgrey)](LICENSE-DOCS)
+[![verify](https://github.com/TheCipherKeeper/cybercity/actions/workflows/verify.yml/badge.svg)](https://github.com/TheCipherKeeper/cybercity/actions/workflows/verify.yml)
+[![License: MIT](https://img.shields.io/badge/code-MIT-2ea44f.svg)](LICENSE)
+[![Docs: CC BY 4.0](https://img.shields.io/badge/docs-CC%20BY%204.0-555.svg)](LICENSE-DOCS)
 
-**CyberCity** — модульный кибер-полигон: цифровой двойник городской ИТ/ОТ-
-инфраструктуры для учений red/blue. Город моделируется как ориентированный граф
-(организации → сервисы → связи достижимости), декларируется как код, рендерится
-в артефакты, исполняется runtime. Не очередная CTF-машинка, а живой, наблюдаемый,
-объяснимый город, где инциденты распространяются через достижимость (каждое
-падение — наблюдённое коллектором событие). Всё крутится на вашем Proxmox / K8s,
-без SaaS и внешней телеметрии.
+**Киберполигон в форме живого цифрового города.**
 
-Этот репозиторий — **хаб** программы: системные контракты и состав. Кода здесь
-нет. Реализация каждого слоя — в отдельном репозитории (`cybercity-*`).
-Методология построения — в
-[`TheCipherKeeper/ai-project-template`](https://github.com/TheCipherKeeper/ai-project-template).
+CyberCity моделирует городскую ИТ/ОТ-инфраструктуру как ориентированный граф:
+организации владеют сервисами, сетевые связи определяют достижимость, а каждое
+изменение состояния сохраняет наблюдаемую причину. Сценарий можно запустить,
+атаку — проследить, последствия — воспроизвести и разобрать.
 
-## Что в хабе
+Проект рассчитан на red/blue-учения, исследование каскадных инфраструктурных
+рисков и практику построения наблюдаемых event-driven систем. Развёртывание
+ориентировано на собственную инфраструктуру — Proxmox и Kubernetes, без
+обязательного SaaS и внешней телеметрии.
 
-| Файл | Что |
+> **Статус:** активная разработка до первой публичной демонстрации. Ядро графа и
+> событий уже существует, остальные компоненты находятся на разных стадиях.
+> Актуальные сведения — в
+> [дорожной карте и статусе реализации](COMPOSITION.md#дорожная-карта-к-первой-публичной-демонстрации).
+
+## Зачем CyberCity
+
+Обычный учебный стенд часто показывает только итог: сервис доступен или
+скомпрометирован. CyberCity строится вокруг причинной истории:
+
+- топология определяет, куда атакующий действительно может добраться;
+- внешнее наблюдение фиксирует произошедшее, а не предполагаемое;
+- поток событий объясняет каждый переход состояния;
+- replay позволяет восстановить ход учения и разобрать решения команд;
+- scoring опирается на доверенные наблюдения, а не на данные из
+  скомпрометированного гостя.
+
+## Как это работает
+
+```mermaid
+flowchart LR
+    Model["Декларативная модель города"] --> Runtime["VM · containers · lite targets"]
+    Runtime --> Observe["Внешнее наблюдение"]
+    Observe --> Events["Доверенный поток событий"]
+    Events --> State["Состояние · причинный граф · scoring"]
+    State --> UI["Карта · таймлайн · replay"]
+```
+
+Это обзор потока, а не контракт между компонентами. Канонические границы,
+владение данными, репозитории и связи находятся в
+[`COMPOSITION.md`](COMPOSITION.md), формат событий — в
+[`CONVENTIONS.md`](CONVENTIONS.md).
+
+## Что находится в этом репозитории
+
+Этот репозиторий — **хаб программы**, а не монорепозиторий с кодом сервисов.
+
+| Документ | Назначение |
 |---|---|
-| [`COMPOSITION.md`](COMPOSITION.md) | Состав программы: сервисы + интерфейсы + stub-таргеты, контракты, доверительная граница, ownership, потоки, статус реализации. Edge-реестр для verification «вниз». |
-| [`CONVENTIONS.md`](CONVENTIONS.md) | Event envelope и кросс-сервисные конвенции общения (версионируется `CONVENTIONS@vN`). |
-| [`AGENTS.md`](AGENTS.md) | Правила работы в хабе: приоритет доков, ветвление, можно/нельзя, версионирование контрактов, ADR-формат, нейминг, коммиты. |
-| [`docker-compose.yml`](docker-compose.yml) | Системный compose: все сервисы + брокер (Redpanda). |
-| [`adr/`](adr/) | Архитектурные решения (единый ADR-дом программы; индекс — `adr/README.md`). |
+| [`COMPOSITION.md`](COMPOSITION.md) | Канонический состав системы, границы, ownership, потоки, roadmap и статус |
+| [`CONVENTIONS.md`](CONVENTIONS.md) | Версионируемый event envelope и общие правила взаимодействия |
+| [`adr/`](adr/) | Архитектурные решения всей программы |
+| [`docker-compose.yml`](docker-compose.yml) | Системная композиция компонентов |
+| [`BACKLOG.md`](BACKLOG.md) | Единственный упорядоченный источник задач |
+| [`AGENTS.md`](AGENTS.md) | Правила работы людей и программных агентов |
 
-## Репозитории программы
+Код каждого компонента развивается в отдельном репозитории. Их полный перечень,
+роли, стеки и текущая готовность поддерживаются только в
+[`COMPOSITION.md`](COMPOSITION.md), чтобы не дублировать системные факты.
 
-Канонические состав, роли, стеки, контракты, пины и доверительная граница
-описаны только в [`COMPOSITION.md`](COMPOSITION.md).
+## Быстрый старт
 
-Профиль автора: [`TheCipherKeeper`](https://github.com/TheCipherKeeper/TheCipherKeeper) · [thecipherkeeper.github.io](https://thecipherkeeper.github.io).
-
-## Разработка
-
-```bash
-git checkout main && git pull && git checkout -b feat/TASK-NNNN-<slug>
-# правки COMPOSITION/CONVENTIONS/compose/adr; проверка перед коммитом
-git commit -m "feat(conventions): ..." && git push   # PR в main
-```
-
-Прямой коммит в `main` запрещён; интеграция — только PR со squash merge.
-Стабильная версия `vX.Y.Z` создаётся отдельной задачей человека. Правила —
-[`AGENTS.md`](AGENTS.md).
-
-### Запуск всей программы
+Для системного запуска нужны Docker Compose и заранее опубликованные образы
+компонентов.
 
 ```bash
-cp .env.example .env            # заполнить per-сервис конф + BROKER_ADDR + CONVENTIONS_PIN
-docker compose config           # проверить
-docker compose up               # брокер + все сервисы (образы собраны заранее)
+git clone https://github.com/TheCipherKeeper/cybercity.git
+cd cybercity
+
+cp .env.example .env
+docker compose config
+docker compose up -d
+docker compose ps
 ```
 
-Команды запуска/сборки отдельного сервиса — в его репозитории (там код и
-`Dockerfile`); в хабе их нет. Структура compose —
-[`ai-project-template/docs/OPERATIONS.md`](https://github.com/TheCipherKeeper/ai-project-template/blob/main/docs/OPERATIONS.md).
+Интерфейс и API при наличии соответствующих образов доступны на портах,
+заданных в [`docker-compose.yml`](docker-compose.yml). Поскольку проект ещё
+развивается, совместимость всей композиции проверяйте по
+[текущему статусу](COMPOSITION.md#статус-реализации-кратко). Локальная сборка и
+запуск отдельного компонента описываются в его собственном репозитории.
 
-## Лицензия
+## Участие в разработке
 
-Код — [MIT](LICENSE), документация — [CC BY 4.0](LICENSE-DOCS). Полное правило о
-лицензиях в каждом репозитории — [`AGENTS.md`](AGENTS.md) → *Лицензии*.
+Работа начинается с первой задачи `[ ] ready` в
+[`BACKLOG.md`](BACKLOG.md) и ведётся в ветке
+`feat/TASK-NNNN-<slug>`. Изменения попадают в `main` только через PR,
+обязательную проверку и squash merge.
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c feat/TASK-NNNN-short-description
+```
+
+Перед изменениями прочитайте [`AGENTS.md`](AGENTS.md). Методология разработки
+закреплена точной версией в [`.methodology.yml`](.methodology.yml), поэтому
+локальная проверка и CI используют один набор правил.
+
+## Документация
+
+- [Состав и архитектура системы](COMPOSITION.md)
+- [Контракты взаимодействия](CONVENTIONS.md)
+- [Архитектурные решения](adr/README.md)
+- [Бэклог](BACKLOG.md)
+- [Правила работы](AGENTS.md)
+- [Методология проекта](https://github.com/TheCipherKeeper/ai-project-template)
+
+## Лицензии
+
+Код распространяется по [MIT](LICENSE), документация — по
+[CC BY 4.0](LICENSE-DOCS).
