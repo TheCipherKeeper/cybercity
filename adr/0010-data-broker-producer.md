@@ -17,7 +17,7 @@ Accepted
 **out-of-band** (файлы — MinIO/файловая шара), без брокера. В этой модели `data`
 — не участник общения, а источник файлов.
 
-Методология (`<methodology-repo>/docs/refs/COMMUNICATION.md`) определяет сервис
+Методология (`<methodology-repo>/docs/ARCHITECTURE.md`) определяет сервис
 как **клиента брокера** (publish/consume топики); прямые service-to-service связи
 в обход брокера запрещены. Файловые артефакты out-of-band не нарушают это правило
 (они не «service-to-service вызов»), но оставляют `data` вне брокерной модели:
@@ -55,7 +55,7 @@ Accepted
   публикатором envelope `CONVENTIONS@v1`. Существующий layered-код
   (Controller→Service→UseCase→Domain/Data) перестраивается в per-module
   `usecases/ports/domain/adapters` с `Protocol` ports + broker-adapter
-  (`<methodology-repo>/docs/refs/MODULE.md`).
+  (`<methodology-repo>/docs/ARCHITECTURE.md`).
 - **`data` НЕ становится consumer'ом** на этом этапе: он только публикует.
   Consumer-цикл (если понадобится — напр. реакции на infra-события) — отдельный
   ADR.
@@ -115,4 +115,4 @@ Accepted
   `city.build.completed`), «Потоки данных и контракты» (пункт 4).
 - [`../CONVENTIONS.md`](../CONVENTIONS.md) — `CONVENTIONS@v1`, envelope, топик
   `city.build.completed`.
-- `<methodology-repo>/docs/refs/COMMUNICATION.md` — сервис как broker-клиент.
+- `<methodology-repo>/docs/ARCHITECTURE.md` — сервис как broker-клиент.

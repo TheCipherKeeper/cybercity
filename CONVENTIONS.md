@@ -5,7 +5,7 @@
 пиннённой версии; контракт выпущенной версии неизменен (новое — `@vN+1`).
 
 > Скелет-источник — `<methodology-repo>/skeletons/hub/CONVENTIONS.md`; модель
-> общения — `<methodology-repo>/docs/refs/COMMUNICATION.md`. Состав программы,
+> общения — `<methodology-repo>/docs/ARCHITECTURE.md`. Состав программы,
 > реестр сервисов/интерфейсов/stub-таргетов и пинов — `COMPOSITION.md`.
 > Широкие project-конвенции (иерархия доков, язык, ADR-формат, нейминг,
 > логирование, коммиты, лицензии) — `AGENTS.md` (governance хаба).
@@ -17,7 +17,7 @@
   `@v1` (старые consumer'ы не ломаются). Breaking — major bump `@vN+1`.
 - **Breaking →** `@v2` отдельным PR; сервисы мигрируют каждый своим PR (бамп пина
   + правки). Не атомарно — потому и нужен pin. См. `AGENTS.md` →
-  *Версионирование контрактов*; `<methodology-repo>/docs/refs/VERIFICATION.md`.
+  *Версионирование контрактов*; `<methodology-repo>/docs/ARCHITECTURE.md`.
 
 ## Event envelope
 
