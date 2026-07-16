@@ -5,7 +5,8 @@
 # (канон — собранные образы; см. <methodology-repo>/docs/refs/DEPLOYMENT.md).
 #
 # Состав сервисов/интерфейсов/stub-таргетов и пины — COMPOSITION.md.
-# Формат сообщений — CONVENTIONS.md. Переменные — .env (env_file: .env).
+# Формат сообщений — CONVENTIONS.md. Безопасные значения локального запуска —
+# `.env.example`; реальные значения передаются окружением платформы.
 
 services:
   broker:
@@ -25,38 +26,38 @@ services:
   engine:
     image: ghcr.io/thecipherkeeper/cybercity-engine:latest   # собранный образ cybercity-engine
     depends_on: [broker]
-    env_file: .env
+    env_file: .env.example
     ports:
       - "8080:8080"   # presentation: /v1/topology, /v1/state, /ws (для ui)
 
   data:
     image: ghcr.io/thecipherkeeper/cybercity-data:latest    # собранный образ cybercity-data
     depends_on: [broker]
-    env_file: .env
+    env_file: .env.example
     # presentation-эндпоинтов нет; публикует city.build.completed в брокер
 
   manage:
     image: ghcr.io/thecipherkeeper/cybercity-manage:latest   # собранный образ cybercity-manage
     depends_on: [broker]
-    env_file: .env
+    env_file: .env.example
 
   collector:
     image: ghcr.io/thecipherkeeper/cybercity-collector:latest  # собранный образ cybercity-collector
     depends_on: [broker]
-    env_file: .env
+    env_file: .env.example
 
   clite:
     # Stub-таргет (runtime_kind: lite): контейнер-цель БЕЗ брокера и БЕЗ presentation.
     # Параметризуется дескриптором; наблюдается collector'ом out-of-band.
     image: ghcr.io/thecipherkeeper/cybercity-clite:latest
-    env_file: .env
+    env_file: .env.example
     ports:
       - "7777:7777"   # пассивная поверхность stub-таргета (raw TCP/SSH/HTTP-баннер)
 
   ui:
     # Интерфейс — клиент на границе; зовёт presentation-эндпоинты engine.
     image: ghcr.io/thecipherkeeper/cybercity-ui:latest
-    env_file: .env
+    env_file: .env.example
     ports:
       - "5173:5173"   # Vite dev / собранная статика
 
