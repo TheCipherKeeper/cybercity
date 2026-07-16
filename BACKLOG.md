@@ -38,7 +38,7 @@ Hub воспроизводимо проходит обязательную пр�
 
 ### TASK-0002. [ ] ready — Привести компоненты CyberCity к актуальной методологии
 
-Целевые репозитории: cybercity-data, cybercity-manage, cybercity-engine,
+Целевой репозиторий: cybercity-data, cybercity-manage, cybercity-engine,
 cybercity-collector, cybercity-ui
 Риск: medium
 Автономность: auto-test
