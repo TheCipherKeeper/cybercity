@@ -41,12 +41,13 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 > контракта — версия `CONVENTIONS`, на которой сервис работает; гейт проверяет
 > сервис против пина, не HEAD (`<methodology-repo>/docs/ARCHITECTURE.md`).
 
-| Сервис | Репо | Стек | Роль | Публикует / Читает | Пин контракта |
-|---|---|---|---|---|---|
-| `engine` | [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine) | Go | событийное ядро: топологический + причинный граф, tick-loop, replay, scoring; единственный мутатор world-state | читает: подписанные события collector, control-канал manage, события игрока/сценария; публикует: state-обновления для ui (WS) | `CONVENTIONS@v1` |
-| `data` | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев + уязвимости; сборка артефактов | публикует: `city.build.completed` (событие готовности `engine.zip`); артефакты `engine.zip`/`topology.json`/`overlays` — out-of-band (файлы), событие — брокер | `CONVENTIONS@v1` |
-| `manage` | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Go | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты; оркестрирует Proxmox API + Terraform/Pulumi; generic consumer `overlays`-артефакта | публикует: infra-события (provisioning/reset/изоляция) в control-topic; control API `manage → engine` (HTTP/gRPC) | `CONVENTIONS@v1` |
-| `collector` | [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) | Rust | внешний out-of-band per-host наблюдатель: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range | публикует: подписанные (Ed25519) события наблюдения; читает: control-канал от manage («наблюдай X», «снапшот») | `CONVENTIONS@v1` |
+| Сервис | Репозиторий | Версия/хеш | Роль | Публикует / Читает |
+|---|---|---|---|---|
+| `gateway` | https://github.com/TheCipherKeeper/cybercity-gateway | `5fc69a54dc987005e5c4193e719dc2e7725d9967` | **сервис-шлюз** (`gateway`, клиентский API) | публикует: `city.commands`; читает: `city.state.updated` |
+| `engine` | https://github.com/TheCipherKeeper/cybercity-engine | `54cfc601d9f734baab5951dbb6a7c7df2e3788e2` | событийное ядро; единственный мутатор world-state; `CONVENTIONS@v1` | читает: подписанные события collector, control-канал manage, события игрока/сценария; публикует: state-обновления |
+| `data` | https://github.com/TheCipherKeeper/cybercity-data | `5f1c2325c667499e16e1ec2e53ab20bed6f04311` | декларативная модель города и сборка артефактов; `CONVENTIONS@v1` | публикует: `city.build.completed`; артефакты `engine.zip`/`topology.json`/`overlays` — out-of-band |
+| `manage` | https://github.com/TheCipherKeeper/cybercity-manage | `9402972e8d564f5c3b15a7a933c2f5e525305a03` | контрольная плоскость; `CONVENTIONS@v1` | публикует: infra-события в control-topic; читает: управляющие события |
+| `collector` | https://github.com/TheCipherKeeper/cybercity-collector | `ffecee0c712e3e1c3e8568aad5fee91db100d77e` | внешний out-of-band наблюдатель; `CONVENTIONS@v1` | публикует: подписанные события наблюдения; читает: control-канал от manage |
 
 > `data` переходит из чистого CLI-инструмента в **broker-участника**: публикует
 > событие готовности сборки (`city.build.completed`), дополняя файловые
@@ -60,11 +61,11 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 > Зовёт presentation-эндпоинты сервисов (HTTP/WS). Здесь — реестр для ребра
 > `хаб → интерфейс` (потребляет только существующие сервисы/эндпоинты).
 
-| Интерфейс | Репо | Стек | Визуализирует | Потребляет (сервис/эндпоинт) |
+| Интерфейс | Репозиторий | Версия/хеш | Визуализирует | Потребляет (сервис-шлюз/маршрут) |
 |---|---|---|---|---|
-| `ui` | [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui) | React/TS | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты | `engine` `/v1/topology`, `/v1/state`, `/ws` (live-поток); статичная `topology.json` из `data` (v0, до перехода на presentation engine) |
+| `ui` | https://github.com/TheCipherKeeper/cybercity-ui | `a1f3f130f65b3191919a72ad67e78b820651b0e4` | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты | gateway /v1/topology, /v1/state, /ws |
 
-## Stub-таргеты
+## Автономные компоненты
 
 > Stub-таргет — passive target: контейнер с реальными сетевыми поверхностями,
 > не брокер-клиент, не peer, без presentation-эндпоинтов. Параметризуется
@@ -72,9 +73,9 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 > `CONVENTIONS@vN` к stub N/A (не потребляет envelope). Модель —
 > `<methodology-repo>/docs/ARCHITECTURE.md`.
 
-| Цель | Репо | Стек | Поверхности | Параметризация | Наблюдатель |
-|---|---|---|---|---|---|
-| `clite` | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | реальный сокет + поддельный баннер (raw TCP/SSH/HTTP по дескриптору) | `runtime_kind: lite`, `kind`, `ports`, `software`, `banner` (дескриптор из `manage` service-mapping) | `collector` (out-of-band scrape) |
+| Компонент | Репозиторий | Версия/хеш | Форма | Назначение / поверхности |
+|---|---|---|---|---|
+| `clite` | https://github.com/TheCipherKeeper/cybercity-clite | `de596b1ba20d878bdb9257790981eb127b78eae9` | `container` | реальный сокет и декларативный баннер; наблюдение через `collector` |
 
 `runtime_kind` (`vm` / `container` / `lite`, deployment-time) — модель хаба
 ([ADR-0004](adr/0004-runtime-kind-vm-container-lite.md)); `clite` реализует
