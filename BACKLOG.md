@@ -40,11 +40,11 @@ Hub воспроизводимо проходит обязательную пр�
 
 Целевой репозиторий: cybercity-data, cybercity-manage, cybercity-engine,
 cybercity-collector, cybercity-ui
-Риск: medium
-Автономность: auto-test
+Риск: high
+Автономность: human-before-production
 Триггеры:
-- архитектура
-- безопасность
+- architecture
+- security
 
 Цель:
 Каждый существующий компонент CyberCity воспроизводимо проходит обязательную
