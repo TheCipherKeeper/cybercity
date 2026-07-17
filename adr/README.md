@@ -17,6 +17,7 @@ Architecture Decision Records проекта. **Все ADR — и сквозны
 | [0008](0008-topology-reachability-only-observed-propagation.md) | Сквозное | Топологический граф — только достижимость; пропагация наблюдается, не вычисляется | Accepted |
 | [0009](0009-manage-implementation-language-go.md) | `manage` | Go как язык реализации контрольной плоскости (supersede стек-части ADR-0001) | Accepted |
 | [0010](0010-data-broker-producer.md) | `data` | `cybercity-data` как broker-участник (publish `city.build.completed`); `CONVENTIONS@v1` | Accepted |
+| [0011](0011-dedicated-gateway-broker-only.md) | Сквозное | Единый gateway и broker-only связность | Accepted |
 
 Формат ADR — в [`../AGENTS.md`](../AGENTS.md) → *ADR-формат*; шаблон —
 [`_TEMPLATE.md`](_TEMPLATE.md). Состав и контракты — в

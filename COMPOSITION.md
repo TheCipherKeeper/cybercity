@@ -3,14 +3,14 @@
 Канонический источник правды о составе проекта: репозитории, контракты,
 доверительная граница, ownership, имена, статус реализации. Это **edge-реестр**
 для verification «вниз» (`хаб → все сервисы` + `хаб → интерфейсы` + `хаб →
-stub-таргеты`): гейт перечисляет детей отсюда. Все репозитории ссылаются сюда;
+автономные компоненты`): гейт перечисляет детей отсюда. Все репозитории ссылаются сюда;
 их `README` держат только короткую сводку + ссылку.
 
 > Методология — в репозитории
-> [`TheCipherKeeper/ai-project-template`](https://github.com/TheCipherKeeper/ai-project-template)
+> [`TheCipherKeeper/addm`](https://github.com/TheCipherKeeper/addm)
 > (далее `<methodology-repo>`): границы и контракты — `docs/ARCHITECTURE.md`,
-> рабочий цикл и обязательная проверка — `docs/WORKFLOW.md`. Этот хаб — её
-> инстанция; правила читаются из
+> рабочий цикл и обязательная проверка — `docs/WORKFLOW.md`, поставка —
+> `docs/OPERATIONS.md`. Этот хаб — её инстанция; правила читаются из
 > методологии, не копируются.
 
 **CyberCity** — модульный кибер-полигон: цифровой двойник городской ИТ/ОТ-
@@ -37,16 +37,18 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 
 ## Сервисы
 
-> Сервис — клиент брокера; один репо, один стек, деплой контейнером. Пин
-> контракта — версия `CONVENTIONS`, на которой сервис работает; гейт проверяет
-> сервис против пина, не HEAD (`<methodology-repo>/docs/ARCHITECTURE.md`).
+> Сервис — клиент брокера; один репо, один стек, деплой контейнером. Версия/хеш —
+> закреплённое состояние сервис-репозитория; обязательная проверка хаба
+> перечисляет дочерние репозитории отсюда, а каждый сервис проверяется собственным
+> CI на закреплённой версии (`<methodology-repo>/docs/ARCHITECTURE.md`).
 
-| Сервис | Репо | Стек | Роль | Публикует / Читает | Пин контракта |
-|---|---|---|---|---|---|
-| `engine` | [`cybercity-engine`](https://github.com/TheCipherKeeper/cybercity-engine) | Go | событийное ядро: топологический + причинный граф, tick-loop, replay, scoring; единственный мутатор world-state | читает: подписанные события collector, control-канал manage, события игрока/сценария; публикует: state-обновления для ui (WS) | `CONVENTIONS@v1` |
-| `data` | [`cybercity-data`](https://github.com/TheCipherKeeper/cybercity-data) | Python | декларативная модель города (source of truth) + авторинг сценариев + уязвимости; сборка артефактов | публикует: `city.build.completed` (событие готовности `engine.zip`); артефакты `engine.zip`/`topology.json`/`overlays` — out-of-band (файлы), событие — брокер | `CONVENTIONS@v1` |
-| `manage` | [`cybercity-manage`](https://github.com/TheCipherKeeper/cybercity-manage) | Go | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты; оркестрирует Proxmox API + Terraform/Pulumi; generic consumer `overlays`-артефакта | публикует: infra-события (provisioning/reset/изоляция) в control-topic; control API `manage → engine` (HTTP/gRPC) | `CONVENTIONS@v1` |
-| `collector` | [`cybercity-collector`](https://github.com/TheCipherKeeper/cybercity-collector) | Rust | внешний out-of-band per-host наблюдатель: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range | публикует: подписанные (Ed25519) события наблюдения; читает: control-канал от manage («наблюдай X», «снапшот») | `CONVENTIONS@v1` |
+| Сервис | Репозиторий | Версия/хеш | Роль | Публикует / Читает |
+|---|---|---|---|---|
+| `gateway` | https://github.com/TheCipherKeeper/cybercity-gateway | v0.0.0 | **сервис-шлюз** (`gateway`, единственный browser-facing API) | читает: `city.state.updated`; публикует: `city.commands`; обслуживает `/v1/*`, `/ws` |
+| `engine` | https://github.com/TheCipherKeeper/cybercity-engine | 54cfc60 | событийное ядро: топологический + причинный граф, tick-loop, replay, scoring; единственный мутатор world-state | читает: подписанные события collector, control-топики manage, события игрока/сценария; публикует: `city.state.updated` |
+| `data` | https://github.com/TheCipherKeeper/cybercity-data | 5f1c232 | декларативная модель города (source of truth) + авторинг сценариев + уязвимости; сборка артефактов | публикует: `city.build.completed`; артефакты `engine.zip`/`topology.json`/`overlays` — out-of-band (файлы) |
+| `manage` | https://github.com/TheCipherKeeper/cybercity-manage | 9402972 | контрольная плоскость: provisioning, reset/rollback, изоляция, квоты; оркестрирует Proxmox API + Terraform/Pulumi; generic consumer `overlays`-артефакта | публикует: infra-события и команды управления engine в control-топики; читает ответы из result-топика |
+| `collector` | https://github.com/TheCipherKeeper/cybercity-collector | ffecee0 | внешний out-of-band per-host наблюдатель: зонды (fs/net/mem/proc/syscall), подписанные события в engine по Kafka; недосягаем из range | публикует: подписанные (Ed25519) события наблюдения; читает: control-канал от manage («наблюдай X», «снапшот») |
 
 > `data` переходит из чистого CLI-инструмента в **broker-участника**: публикует
 > событие готовности сборки (`city.build.completed`), дополняя файловые
@@ -57,29 +59,30 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 ## Интерфейсы
 
 > Интерфейс — клиент на доверительной границе, не сервис и не брокер-клиент.
-> Зовёт presentation-эндпоинты сервисов (HTTP/WS). Здесь — реестр для ребра
-> `хаб → интерфейс` (потребляет только существующие сервисы/эндпоинты).
+> Зовёт presentation-эндпоинты единственного сервис-шлюза (HTTP/WS). Здесь —
+> реестр для ребра `хаб → интерфейс` (потребляет только существующие маршруты
+> сервис-шлюза).
 
-| Интерфейс | Репо | Стек | Визуализирует | Потребляет (сервис/эндпоинт) |
+| Интерфейс | Репозиторий | Версия/хеш | Визуализирует | Потребляет (сервис-шлюз/маршрут) |
 |---|---|---|---|---|
-| `ui` | [`cybercity-ui`](https://github.com/TheCipherKeeper/cybercity-ui) | React/TS | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты | `engine` `/v1/topology`, `/v1/state`, `/ws` (live-поток); статичная `topology.json` из `data` (v0, до перехода на presentation engine) |
+| `ui` | https://github.com/TheCipherKeeper/cybercity-ui | a1f3f13 | 2D-карта топологии, таймлайн событий, дашборды red/blue, отчёты | gateway /v1/topology, /v1/state, /ws |
 
-## Stub-таргеты
+## Автономные компоненты
 
-> Stub-таргет — passive target: контейнер с реальными сетевыми поверхностями,
-> не брокер-клиент, не peer, без presentation-эндпоинтов. Параметризуется
-> дескриптором из `manage`, наблюдается `collector` out-of-band.
-> `CONVENTIONS@vN` к stub N/A (не потребляет envelope). Модель —
-> `<methodology-repo>/docs/ARCHITECTURE.md`.
+> Автономный компонент — независимо поставляемая программа вне сервисного обмена:
+> контейнер с реальными сетевыми поверхностями, не брокер-клиент, не peer, без
+> presentation-эндпоинтов. Параметризуется дескриптором из `manage`, наблюдается
+> `collector` out-of-band. `CONVENTIONS@vN` к нему неприменимо (не потребляет
+> envelope). Модель — `<methodology-repo>/docs/ARCHITECTURE.md`.
 
-| Цель | Репо | Стек | Поверхности | Параметризация | Наблюдатель |
-|---|---|---|---|---|---|
-| `clite` | [`cybercity-clite`](https://github.com/TheCipherKeeper/cybercity-clite) | Rust | реальный сокет + поддельный баннер (raw TCP/SSH/HTTP по дескриптору) | `runtime_kind: lite`, `kind`, `ports`, `software`, `banner` (дескриптор из `manage` service-mapping) | `collector` (out-of-band scrape) |
+| Компонент | Репозиторий | Версия/хеш | Форма | Назначение / поверхности |
+|---|---|---|---|---|
+| `clite` | https://github.com/TheCipherKeeper/cybercity-clite | v0.0.0 | `container` (`lite`) | пассивная цель: реальный сокет + поддельный баннер (raw TCP/SSH/HTTP по дескриптору); параметризуется `runtime_kind: lite`, `kind`, `ports`, `software`, `banner` из `manage` service-mapping; наблюдается `collector` out-of-band |
 
 `runtime_kind` (`vm` / `container` / `lite`, deployment-time) — модель хаба
 ([ADR-0004](adr/0004-runtime-kind-vm-container-lite.md)); `clite` реализует
-`lite`. Stub живёт **внутри range-сегмента** (ненадёжная плоскость) — он и есть
-наблюдаемая цель; отдельный репо держит доверительную границу чистой
+`lite`. Компонент живёт **внутри range-сегмента** (ненадёжная плоскость) — он и
+есть наблюдаемая цель; отдельный репо держит доверительную границу чистой
 ([ADR-0001](adr/0001-repo-composition.md), [ADR-0002](adr/0002-trust-boundary.md)).
 
 ## Доверительная граница
@@ -107,13 +110,14 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 - **События / причинность / replay / scoring-логика** → `engine`.
 - **World-state / persistence (PostgreSQL)** → `engine` и только `engine`.
   `engine` — единственный читатель и писатель PostgreSQL (снапшоты `WorldState`
-  + audit log). **UI и manage в БД не ходят.** UI читает статичную
-  `topology.json` (из `data`) + live-поток `engine` по WebSocket; manage
-  координирует `engine` через control API и Redpanda, но world-state не владеет.
-- **manage ↔ engine** — два канала: control API `manage → engine` (HTTP/gRPC:
-  старт/пауза/сброс сценария, запрос снапшота, reload топологии) + Redpanda
-  control-topic `manage → engine` (уведомления об изменениях инфры:
-  provisioning/reset/изоляция — engine слышит как смену сим-состояния).
+  + audit log). **UI и manage в БД не ходят.** UI обращается только к `gateway`
+  (HTTP/WS); `gateway` строит read model из `city.state.updated` engine; manage
+  координирует `engine` через control-топики Redpanda, но world-state не владеет.
+- **manage ↔ engine** — только control-топики Redpanda: старт/пауза/сброс
+  сценария, запрос снапшота, reload топологии и уведомления об изменениях инфры
+  (provisioning/reset/изоляция — engine слышит как смену сим-состояния). Прямого
+  HTTP/gRPC-канала между сервисами нет
+  ([ADR-0011](adr/0011-dedicated-gateway-broker-only.md)).
 - **Декларация мира, сценариев и уязвимостей** → `data`. Уязвимость — first-class
   сущность (манифест + overlay-исходники, `realism ∈ {real, narrative}`);
   `cve_id` живёт в vuln-сущности, не в дескрипторе сервиса
@@ -160,7 +164,7 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
    `service-mapping` + `overlay-id` собирает образы (Packer/Ansible) и деплоит;
    дёргает гипервизор/фабрику (provisioning, snapshot/reset, изоляция). Семантики
    vuln не знает. `engine` слышит об изменениях инфры как о смене сим-состояния.
-8. `cybercity-ui` читает `topology.json` + поток событий `engine` (WebSocket).
+8. `cybercity-ui` обращается только к `cybercity-gateway` (HTTP/WS); `gateway` потребляет `city.state.updated` из engine и строит read model.
 
 ## Два графа — модель города
 
@@ -191,7 +195,7 @@ Proxmox / K8s, без SaaS и внешней телеметрии.
 |-------|---|---|----|
 | **vm** | полная VM, real OS/software | out-of-band наблюдатель (`collector`) | high-value target, Windows/OT, persistence |
 | **container** | контейнер, real software (gVisor/Kata) | out-of-band наблюдатель | real-сервис на shared-ядре, плотнее VM |
-| **lite** | лёгкий stub-контейнер: реальный сокет + поддельный баннер (`clite`) | out-of-band наблюдатель | массовый фон города (дешёвый runnable-фон) |
+| **lite** | лёгкий контейнер-цель: реальный сокет + поддельный баннер (`clite`) | out-of-band наблюдатель | массовый фон города (дешёвый runnable-фон) |
 
 `runtime_kind` — deployment-time concern, не часть канонической city data
 (назначается в `manage` service-mapping manifest). По умолчанию — `lite`. Все
@@ -228,7 +232,7 @@ flowchart LR
     Coll -->|"подписанные события (Ed25519)"| Broker
     Broker -->|"авторитетный поток для scoring"| K8sC
     Manage -->|"provisioning · reset · изоляция<br/>(ZFS snapshot/clone · pod restart)"| Prox
-    Manage -->|"control API / control-topic"| K8sC
+    Manage -->|"control-topic (Redpanda)"| K8sC
     Manage -->|"control: «наблюдай X»"| Coll
 
     PW -.->|"attack surface<br/>(только declared exposure)"| RANGE
@@ -239,7 +243,7 @@ flowchart LR
 - **Management-сегмент (trusted):** Proxmox-хосты, K8s control plane (`engine`,
   `PostgreSQL`, `Redpanda`, ArgoCD), `manage`, `collector` (по демону на хост),
   брокер. Здесь считается scoring.
-- **Range-сегмент (best-effort):** гости (`vm`), поды (`container`), stub-поды
+- **Range-сегмент (best-effort):** гости (`vm`), поды (`container`), автономные поды
   `clite` (`lite`), рабочие станции игроков. Ненадёжная плоскость; in-guest
   телеметрия — best-effort, **никогда** не источник для scoring.
 - **Multus** даёт каждому сервису реальный per-service IP в range — поэтому
@@ -470,3 +474,4 @@ execution), студенты (каскадные инфра-риски), кон�
 - [`0008-topology-reachability-only-observed-propagation.md`](adr/0008-topology-reachability-only-observed-propagation.md) — топология = достижимость; пропагация наблюдается.
 - [`0009-manage-implementation-language-go.md`](adr/0009-manage-implementation-language-go.md) — manage на Go.
 - [`0010-data-broker-producer.md`](adr/0010-data-broker-producer.md) — data как broker-участник.
+- [`0011-dedicated-gateway-broker-only.md`](adr/0011-dedicated-gateway-broker-only.md) — единый gateway и broker-only связность.

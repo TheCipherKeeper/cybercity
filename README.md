@@ -100,6 +100,15 @@ git pull --ff-only
 git switch -c feat/TASK-NNNN-short-description
 ```
 
+Первую задачу `[ ] ready` из [`BACKLOG.md`](BACKLOG.md) запускают из корня хаба:
+
+```bash
+uv run tools/run_task.py
+```
+
+Исполнитель читает настройки из корневого `.env`, берёт первую готовую задачу
+и работает в пределах рабочей области программы.
+
 Перед изменениями прочитайте [`AGENTS.md`](AGENTS.md). Методология разработки
 закреплена точной версией в [`.methodology.yml`](.methodology.yml), поэтому
 локальная проверка и CI используют один набор правил.
@@ -111,7 +120,7 @@ git switch -c feat/TASK-NNNN-short-description
 - [Архитектурные решения](adr/README.md)
 - [Бэклог](BACKLOG.md)
 - [Правила работы](AGENTS.md)
-- [Методология проекта](https://github.com/TheCipherKeeper/ai-project-template)
+- [Методология проекта](https://github.com/TheCipherKeeper/addm)
 
 ## Лицензии
 
